@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, Bell, CalendarCheck, ClipboardList, BarChart3, Sparkles, ScanLine, LogOut, ChevronRight, BookOpen } from 'lucide-react';
+import { GraduationCap, Bell, CalendarCheck, ClipboardList, BarChart3, Sparkles, ScanLine, LogOut, ChevronRight, BookOpen, CalendarDays, CalendarClock, Layers } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -7,6 +7,9 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
   { path: '/subjects', label: 'Subjects', icon: BookOpen },
   { path: '/attendance', label: 'Attendance', icon: CalendarCheck },
+  { path: '/calendar', label: 'Calendar', icon: CalendarDays },
+  { path: '/timetable', label: 'Timetable', icon: CalendarClock },
+  { path: '/semesters', label: 'Semesters', icon: Layers },
   { path: '/assignments', label: 'Assignments', icon: ClipboardList },
   { path: '/analytics', label: 'Analytics', icon: BarChart3 },
   { path: '/ai', label: 'AI Assistant', icon: Sparkles },

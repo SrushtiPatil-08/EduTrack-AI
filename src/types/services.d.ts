@@ -56,6 +56,8 @@ declare module '@/services/db' {
     credits: number;
     type: 'theory' | 'practical' | 'lab';
     color: string;
+    semester_id: string | null;
+    attendance_goal: number | null;
     created_at: string;
     updated_at: string;
   }
@@ -65,8 +67,9 @@ declare module '@/services/db' {
     user_id: string;
     subject_id: string | null;
     date: string;
-    status: 'present' | 'absent' | 'excused';
+    status: 'present' | 'absent' | 'excused' | 'cancelled';
     notes: string | null;
+    timetable_entry_id: string | null;
     created_at: string;
   }
 
@@ -131,5 +134,91 @@ declare module '@/services/db' {
   export function createNotification(userId: string, notificationData: any): Promise<{ notification?: Notification; error?: string }>;
   export function markNotificationRead(notificationId: string): Promise<{ notification?: Notification; error?: string }>;
   export function deleteNotification(notificationId: string): Promise<{ error?: string }>;
+
+  export interface Semester {
+    id: string;
+    user_id: string;
+    name: string;
+    start_date: string | null;
+    end_date: string | null;
+    academic_year: string | null;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+  }
+
+  export interface TimetableProfile {
+    id: string;
+    user_id: string;
+    name: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+  }
+
+  export interface TimetableEntry {
+    id: string;
+    user_id: string;
+    profile_id: string;
+    subject_id: string | null;
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+    room: string | null;
+    faculty_name: string | null;
+    created_at: string;
+    updated_at: string;
+    subjects?: { name: string; color: string } | null;
+    attendanceStatus?: string | null;
+    isOverride?: boolean;
+  }
+
+  export interface AttendanceOverride {
+    id: string;
+    user_id: string;
+    date: string;
+    entry_id: string | null;
+    action: 'cancel' | 'replace' | 'add' | 'remove';
+    replacement_subject_id: string | null;
+    created_at: string;
+  }
+
+  export interface CalendarEvent {
+    id: string;
+    user_id: string;
+    title: string;
+    date: string;
+    type: 'holiday' | 'event' | 'exam' | 'other';
+    description: string | null;
+    created_at: string;
+  }
+
+  export function getSemesters(userId: string): Promise<{ semesters?: Semester[]; error?: string }>;
+  export function createSemester(userId: string, semesterData: any): Promise<{ semester?: Semester; error?: string }>;
+  export function updateSemester(semesterId: string, updates: any): Promise<{ semester?: Semester; error?: string }>;
+  export function deleteSemester(semesterId: string): Promise<{ error?: string }>;
+  export function setActiveSemester(userId: string, semesterId: string): Promise<{ semester?: Semester; error?: string }>;
+  export function getTimetableProfiles(userId: string): Promise<{ profiles?: TimetableProfile[]; error?: string }>;
+  export function createTimetableProfile(userId: string, profileData: any): Promise<{ profile?: TimetableProfile; error?: string }>;
+  export function updateTimetableProfile(profileId: string, updates: any): Promise<{ profile?: TimetableProfile; error?: string }>;
+  export function deleteTimetableProfile(profileId: string): Promise<{ error?: string }>;
+  export function setActiveTimetableProfile(userId: string, profileId: string): Promise<{ profile?: TimetableProfile; error?: string }>;
+  export function duplicateTimetableProfile(userId: string, profileId: string, newName: string): Promise<{ profile?: TimetableProfile; error?: string }>;
+  export function getTimetableEntries(userId: string, profileId?: string): Promise<{ entries?: TimetableEntry[]; error?: string }>;
+  export function createTimetableEntry(userId: string, entryData: any): Promise<{ entry?: TimetableEntry; error?: string }>;
+  export function updateTimetableEntry(entryId: string, updates: any): Promise<{ entry?: TimetableEntry; error?: string }>;
+  export function deleteTimetableEntry(entryId: string): Promise<{ error?: string }>;
+  export function getAttendanceOverrides(userId: string, opts?: any): Promise<{ overrides?: AttendanceOverride[]; error?: string }>;
+  export function createAttendanceOverride(userId: string, overrideData: any): Promise<{ override?: AttendanceOverride; error?: string }>;
+  export function deleteAttendanceOverride(overrideId: string): Promise<{ error?: string }>;
+  export function getCalendarEvents(userId: string, opts?: any): Promise<{ events?: CalendarEvent[]; error?: string }>;
+  export function createCalendarEvent(userId: string, eventData: any): Promise<{ event?: CalendarEvent; error?: string }>;
+  export function deleteCalendarEvent(eventId: string): Promise<{ error?: string }>;
+  export function calculateSubjectAttendance(attendance: AttendanceRecord[], subjectId: string, goal?: number): any;
+  export function calculateOverallAttendance(attendance: AttendanceRecord[]): any;
+  export function calculateWeeklyAttendance(attendance: AttendanceRecord[]): any[];
+  export function calculateMonthlyAttendance(attendance: AttendanceRecord[]): any[];
+  export function generateAttendanceInsights(attendance: AttendanceRecord[], subjects: Subject[], goal?: number): any[];
   export function getDashboardData(userId: string): Promise<any>;
+  export function getTodaysTimetable(userId: string): Promise<any>;
 }

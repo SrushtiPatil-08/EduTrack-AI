@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/context/AuthContext';
 import { fadeInUp, staggerContainer, REPLAY_VIEWPORT } from '@/components/motion';
-import { getSubjects, createSubject, updateSubject, deleteSubject } from '@/services/db';
-import type { Subject } from '@/services/db';
+import { getSubjects, createSubject, updateSubject, deleteSubject, getSemesters } from '@/services/db';
+import type { Subject, Semester } from '@/services/db';
 import { cn } from '@/lib/utils';
 
 const colorOptions = [
@@ -31,6 +31,7 @@ export default function Subjects() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [semesters, setSemesters] = useState<Semester[]>([]);
   const [form, setForm] = useState({
     name: '',
     code: '',
@@ -39,17 +40,21 @@ export default function Subjects() {
     credits: 3,
     type: 'theory' as 'theory' | 'practical' | 'lab',
     color: '#10b981',
+    semester_id: '',
+    attendance_goal: 75,
   });
 
   const loadSubjects = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
-    const { subjects: subs, error: err } = await getSubjects(user.id);
-    if (err) {
-      setError(err);
-    } else {
-      setSubjects(subs as Subject[] || []);
-    }
+    const [subRes, semRes] = await Promise.all([
+      getSubjects(user.id),
+      getSemesters(user.id),
+    ]);
+    if (subRes.error) setError(subRes.error);
+    else setSubjects(subRes.subjects as Subject[] || []);
+    if (semRes.error) setError(semRes.error);
+    else setSemesters(semRes.semesters as Semester[] || []);
     setLoading(false);
   }, [user?.id]);
 
@@ -59,7 +64,7 @@ export default function Subjects() {
 
   const openAddModal = () => {
     setEditing(null);
-    setForm({ name: '', code: '', faculty_name: '', weekly_lectures: 3, credits: 3, type: 'theory', color: '#10b981' });
+    setForm({ name: '', code: '', faculty_name: '', weekly_lectures: 3, credits: 3, type: 'theory', color: '#10b981', semester_id: '', attendance_goal: 75 });
     setModalOpen(true);
   };
 
@@ -73,6 +78,8 @@ export default function Subjects() {
       credits: subject.credits,
       type: subject.type,
       color: subject.color,
+      semester_id: subject.semester_id || '',
+      attendance_goal: subject.attendance_goal || 75,
     });
     setModalOpen(true);
   };
@@ -243,6 +250,7 @@ export default function Subjects() {
             error={error}
             onClose={() => setModalOpen(false)}
             onSubmit={handleSubmit}
+            semesters={semesters}
           />
         )}
       </AnimatePresence>
@@ -251,7 +259,7 @@ export default function Subjects() {
 }
 
 function SubjectModal({
-  form, setForm, editing, submitting, error, onClose, onSubmit,
+  form, setForm, editing, submitting, error, onClose, onSubmit, semesters,
 }: {
   form: any;
   setForm: React.Dispatch<React.SetStateAction<any>>;
@@ -260,6 +268,7 @@ function SubjectModal({
   error: string | null;
   onClose: () => void;
   onSubmit: () => void;
+  semesters: Semester[];
 }) {
   const update = (field: string, value: any) => setForm((prev: any) => ({ ...prev, [field]: value }));
 
@@ -289,6 +298,21 @@ function SubjectModal({
               value={form.name}
               onChange={(e) => update('name', e.target.value)}
             />
+            {semesters.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Semester</label>
+                <select
+                  value={form.semester_id}
+                  onChange={(e) => update('semester_id', e.target.value)}
+                  className="w-full h-12 px-4 rounded-xl bg-surface-2 border border-border-2 text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                >
+                  <option value="">No semester</option>
+                  {semesters.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Input
                 id="code"
@@ -364,6 +388,21 @@ function SubjectModal({
                     style={{ backgroundColor: c, boxShadow: form.color === c ? `0 0 20px ${c}60` : 'none' }}
                   />
                 ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Attendance Goal</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={50}
+                  max={100}
+                  value={form.attendance_goal}
+                  onChange={(e) => update('attendance_goal', Number(e.target.value))}
+                  className="flex-1 accent-primary cursor-pointer"
+                />
+                <span className="text-sm font-semibold text-text w-12 text-right">{form.attendance_goal}%</span>
               </div>
             </div>
 

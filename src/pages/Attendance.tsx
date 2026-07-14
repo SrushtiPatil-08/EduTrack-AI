@@ -1,36 +1,43 @@
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
-import { CalendarCheck, Clock, TrendingUp, Plus, Check, X, Minus } from 'lucide-react';
+import { CalendarCheck, Check, X, Minus, AlertTriangle, TrendingUp, Sparkles, Clock, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fadeInUp, staggerContainer, REPLAY_VIEWPORT } from '@/components/motion';
-import { getAttendance, createAttendance, getSubjects } from '@/services/db';
-import type { Subject, AttendanceRecord } from '@/services/db';
+import {
+  getAttendance, createAttendance, updateAttendance, getSubjects, getTodaysTimetable,
+  calculateSubjectAttendance, calculateOverallAttendance, generateAttendanceInsights,
+} from '@/services/db';
+import type { Subject, AttendanceRecord, TimetableEntry } from '@/services/db';
 import { cn } from '@/lib/utils';
 
 export default function Attendance() {
   const { user, profile } = useAuth();
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [todaysClasses, setTodaysClasses] = useState<TimetableEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [marking, setMarking] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<'present' | 'absent' | 'excused'>('present');
+  const [marking, setMarking] = useState<string | null>(null);
+
+  const goal = profile?.attendance_goal || 75;
 
   const loadData = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
-    const [attRes, subRes] = await Promise.all([
+    const [attRes, subRes, ttRes] = await Promise.all([
       getAttendance(user.id),
       getSubjects(user.id),
+      getTodaysTimetable(user.id),
     ]);
     if (attRes.error) setError(attRes.error);
     else setAttendance(attRes.attendance as AttendanceRecord[] || []);
     if (subRes.error) setError(subRes.error);
     else setSubjects(subRes.subjects as Subject[] || []);
+    if (ttRes.error) setError(ttRes.error);
+    else setTodaysClasses(ttRes.entries || []);
     setLoading(false);
   }, [user?.id]);
 
@@ -38,179 +45,253 @@ export default function Attendance() {
     loadData();
   }, [loadData]);
 
-  const handleMark = async () => {
-    if (!user?.id || !selectedSubject) return;
-    setMarking(true);
+  const handleQuickMark = async (entry: TimetableEntry, status: 'present' | 'absent' | 'cancelled') => {
+    if (!user?.id || !entry.subject_id) return;
+    setMarking(entry.id);
     const today = new Date().toISOString().split('T')[0];
-    const { error: err } = await createAttendance(user.id, {
-      subject_id: selectedSubject,
-      date: today,
-      status: selectedStatus,
-    });
-    if (err) setError(err);
-    else {
-      setSelectedSubject('');
-      await loadData();
+    // Check if already marked
+    const existing = attendance.find(
+      (a) => a.date === today && (a.timetable_entry_id === entry.id || a.subject_id === entry.subject_id)
+    );
+    if (existing) {
+      await updateAttendance(existing.id, { status });
+    } else {
+      await createAttendance(user.id, {
+        subject_id: entry.subject_id,
+        timetable_entry_id: entry.id,
+        date: today,
+        status,
+      });
     }
-    setMarking(false);
+    setMarking(null);
+    await loadData();
   };
 
-  const present = attendance.filter((a) => a.status === 'present').length;
-  const absent = attendance.filter((a) => a.status === 'absent').length;
-  const excused = attendance.filter((a) => a.status === 'excused').length;
-  const total = attendance.length;
-  const attendancePct = total > 0 ? Math.round((present / total) * 100) : 0;
-  const goal = profile?.attendance_goal || 75;
-
+  const overall = calculateOverallAttendance(attendance);
+  const insights = generateAttendanceInsights(attendance, subjects, goal);
   const subjectMap = new Map(subjects.map((s) => [s.id, s]));
 
   return (
     <DashboardLayout title="Attendance">
       <motion.div initial="hidden" whileInView="visible" viewport={REPLAY_VIEWPORT} variants={staggerContainer} className="space-y-6">
-        {/* Stats */}
-        <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        {/* Overall stats */}
+        <motion.div variants={fadeInUp} className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <GlassCard className="p-5">
             <CalendarCheck className="text-primary mb-3" size={20} />
-            <p className="text-2xl font-bold text-text">{attendancePct}%</p>
+            <p className="text-2xl font-bold text-text">{overall.pct}%</p>
             <p className="text-xs text-text-muted mt-1">Overall Attendance</p>
           </GlassCard>
           <GlassCard className="p-5">
             <Check className="text-primary-light mb-3" size={20} />
-            <p className="text-2xl font-bold text-text">{present}</p>
-            <p className="text-xs text-text-muted mt-1">Classes Present</p>
+            <p className="text-2xl font-bold text-text">{overall.present}</p>
+            <p className="text-xs text-text-muted mt-1">Present</p>
           </GlassCard>
           <GlassCard className="p-5">
             <X className="text-error mb-3" size={20} />
-            <p className="text-2xl font-bold text-text">{absent}</p>
-            <p className="text-xs text-text-muted mt-1">Classes Absent</p>
+            <p className="text-2xl font-bold text-text">{overall.absent}</p>
+            <p className="text-xs text-text-muted mt-1">Absent</p>
           </GlassCard>
           <GlassCard className="p-5">
             <Clock className="text-info mb-3" size={20} />
-            <p className="text-2xl font-bold text-text">{total}</p>
-            <p className="text-xs text-text-muted mt-1">Total Records</p>
+            <p className="text-2xl font-bold text-text">{overall.conducted}</p>
+            <p className="text-xs text-text-muted mt-1">Conducted</p>
           </GlassCard>
         </motion.div>
 
-        {/* Goal progress */}
+        {/* Quick Mark Mode — Today's classes */}
         <motion.div variants={fadeInUp}>
-          <GlassCard>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-semibold text-text">Attendance Goal</h3>
-                <p className="text-xs text-text-muted mt-1">Target: {goal}%</p>
-              </div>
-              <div className={cn('flex items-center gap-1.5 text-xs', attendancePct >= goal ? 'text-primary-light' : 'text-warning')}>
-                <TrendingUp size={14} />
-                {attendancePct >= goal ? 'On track' : `${goal - attendancePct}% below goal`}
-              </div>
-            </div>
-            <div className="h-3 rounded-full bg-surface-3 overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                whileInView={{ width: `${Math.min(attendancePct, 100)}%` }}
-                viewport={REPLAY_VIEWPORT}
-                transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-                className={cn('h-full rounded-full', attendancePct >= goal ? 'bg-primary' : 'bg-warning')}
-              />
-            </div>
-          </GlassCard>
-        </motion.div>
-
-        {/* Mark attendance */}
-        <motion.div variants={fadeInUp}>
-          <GlassCard>
-            <h3 className="text-sm font-semibold text-text mb-4">Mark Today's Attendance</h3>
-            {subjects.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8">
-                <p className="text-sm text-text-muted">Add subjects first to mark attendance.</p>
-                <Button size="sm" className="mt-4" onClick={() => window.location.href = '/subjects'}>
-                  Go to Subjects
-                </Button>
-              </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row gap-3">
-                <select
-                  value={selectedSubject}
-                  onChange={(e) => setSelectedSubject(e.target.value)}
-                  className="flex-1 h-12 px-4 rounded-xl bg-surface-2 border border-border-2 text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
-                >
-                  <option value="">Select a subject…</option>
-                  {subjects.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-                <div className="flex gap-2">
-                  {(['present', 'absent', 'excused'] as const).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setSelectedStatus(s)}
-                      className={cn(
-                        'h-12 px-4 rounded-xl text-sm font-medium capitalize transition-all cursor-pointer border',
-                        selectedStatus === s
-                          ? s === 'present' ? 'bg-primary/15 border-primary/40 text-primary-light'
-                            : s === 'absent' ? 'bg-error/15 border-error/40 text-error'
-                            : 'bg-info/15 border-info/40 text-info'
-                          : 'bg-surface-2 border-border-2 text-text-muted hover:text-text',
-                      )}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-                <Button size="md" onClick={handleMark} disabled={!selectedSubject || marking}>
-                  <Plus size={16} /> Mark
-                </Button>
-              </div>
-            )}
-            {error && <p className="text-sm text-error mt-3">{error}</p>}
-          </GlassCard>
-        </motion.div>
-
-        {/* Recent records */}
-        <motion.div variants={fadeInUp}>
-          <h3 className="text-sm font-semibold text-text mb-4">Recent Records</h3>
+          <div className="flex items-center gap-2 mb-4">
+            <Zap size={16} className="text-primary" />
+            <h3 className="text-sm font-semibold text-text">Quick Mark — Today's Classes</h3>
+          </div>
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : attendance.length === 0 ? (
-            <GlassCard className="flex flex-col items-center justify-center py-16">
-              <CalendarCheck size={28} className="text-text-muted mb-3" />
-              <p className="text-sm text-text-muted">No attendance records yet. Mark your first class above.</p>
+          ) : todaysClasses.length === 0 ? (
+            <GlassCard className="flex flex-col items-center justify-center py-12">
+              <CalendarCheck size={24} className="text-text-muted mb-2" />
+              <p className="text-sm text-text-muted">
+                {subjects.length === 0
+                  ? 'Add subjects and set up your timetable to see today\'s classes here.'
+                  : 'No classes scheduled for today. Set up your timetable to get started.'}
+              </p>
             </GlassCard>
           ) : (
-            <GlassCard className="p-0 overflow-hidden">
-              {attendance.slice(0, 10).map((record, i) => {
-                const subject = record.subject_id ? subjectMap.get(record.subject_id) : null;
+            <div className="space-y-3">
+              {todaysClasses.map((entry) => {
+                const subject = entry.subject_id ? subjectMap.get(entry.subject_id) : null;
+                const status = entry.attendanceStatus;
                 return (
-                  <div key={record.id} className={cn('flex items-center gap-4 px-6 py-4', i < Math.min(attendance.length, 10) - 1 && 'border-b border-border')}>
-                    <div className={cn(
-                      'w-8 h-8 rounded-lg flex items-center justify-center',
-                      record.status === 'present' ? 'bg-primary/15' : record.status === 'absent' ? 'bg-error/15' : 'bg-info/15',
-                    )}>
-                      {record.status === 'present' ? <Check size={14} className="text-primary" />
-                        : record.status === 'absent' ? <X size={14} className="text-error" />
-                        : <Minus size={14} className="text-info" />}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-text">{subject?.name || 'Unknown subject'}</p>
-                      <p className="text-xs text-text-muted">{new Date(record.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
-                    </div>
-                    <span className={cn(
-                      'text-xs font-semibold capitalize px-3 py-1 rounded-full',
-                      record.status === 'present' ? 'bg-primary/10 text-primary-light'
-                        : record.status === 'absent' ? 'bg-error/10 text-error'
-                        : 'bg-info/10 text-info',
-                    )}>
-                      {record.status}
-                    </span>
-                  </div>
+                  <motion.div
+                    key={entry.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={REPLAY_VIEWPORT}
+                    transition={{ duration: 0.3 }}
+                    whileHover={{ y: -2 }}
+                  >
+                    <GlassCard className="flex items-center gap-4 flex-wrap">
+                      <div className="w-1.5 h-12 rounded-full" style={{ backgroundColor: subject?.color || '#10b981' }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-text">{subject?.name || 'Unknown'}</p>
+                        <p className="text-xs text-text-muted flex items-center gap-1.5 mt-0.5">
+                          <Clock size={11} /> {entry.start_time?.slice(0, 5)} – {entry.end_time?.slice(0, 5)}
+                          {entry.room && ` · Room ${entry.room}`}
+                        </p>
+                      </div>
+                      {status ? (
+                        <span className={cn(
+                          'text-xs font-semibold px-3 py-1.5 rounded-full capitalize',
+                          status === 'present' ? 'bg-primary/10 text-primary-light'
+                            : status === 'absent' ? 'bg-error/10 text-error'
+                            : 'bg-surface-3 text-text-muted',
+                        )}>
+                          {status === 'present' && <Check size={12} className="inline mr-1" />}
+                          {status === 'absent' && <X size={12} className="inline mr-1" />}
+                          {status === 'cancelled' && <Minus size={12} className="inline mr-1" />}
+                          {status}
+                        </span>
+                      ) : (
+                        <div className="flex gap-2">
+                          <QuickMarkButton
+                            label="Present"
+                            icon={<Check size={14} />}
+                            activeClass="bg-primary/15 border-primary/40 text-primary-light"
+                            onClick={() => handleQuickMark(entry, 'present')}
+                            disabled={marking === entry.id}
+                          />
+                          <QuickMarkButton
+                            label="Absent"
+                            icon={<X size={14} />}
+                            activeClass="bg-error/15 border-error/40 text-error"
+                            onClick={() => handleQuickMark(entry, 'absent')}
+                            disabled={marking === entry.id}
+                          />
+                          <QuickMarkButton
+                            label="Cancel"
+                            icon={<Minus size={14} />}
+                            activeClass="bg-surface-3 border-border-2 text-text-muted"
+                            onClick={() => handleQuickMark(entry, 'cancelled')}
+                            disabled={marking === entry.id}
+                          />
+                        </div>
+                      )}
+                    </GlassCard>
+                  </motion.div>
                 );
               })}
-            </GlassCard>
+            </div>
           )}
         </motion.div>
+
+        {/* Subject-wise attendance */}
+        <motion.div variants={fadeInUp}>
+          <h3 className="text-sm font-semibold text-text mb-4">Subject-wise Attendance</h3>
+          {subjects.length === 0 ? (
+            <GlassCard className="flex flex-col items-center justify-center py-12">
+              <CalendarCheck size={24} className="text-text-muted mb-2" />
+              <p className="text-sm text-text-muted">Add subjects to see attendance breakdown.</p>
+            </GlassCard>
+          ) : (
+            <motion.div variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {subjects.map((subject) => {
+                const stats = calculateSubjectAttendance(attendance, subject.id, subject.attendance_goal || goal);
+                return (
+                  <motion.div key={subject.id} variants={fadeInUp} whileHover={{ y: -6, transition: { duration: 0.2 } }}>
+                    <GlassCard className="h-full" style={{ borderColor: `${subject.color}30` }}>
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${subject.color}20`, border: `1px solid ${subject.color}30` }}>
+                          <div className="w-5 h-5 rounded-full" style={{ backgroundColor: subject.color }} />
+                        </div>
+                        <div className={cn('text-2xl font-bold', stats.pct >= (subject.attendance_goal || goal) ? 'text-primary-light' : 'text-warning')}>
+                          {stats.pct}%
+                        </div>
+                      </div>
+                      <h3 className="text-sm font-semibold text-text mb-3">{subject.name}</h3>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <Check size={12} className="text-primary" />
+                          <span className="text-text-muted">Present:</span>
+                          <span className="font-semibold text-text">{stats.present}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <X size={12} className="text-error" />
+                          <span className="text-text-muted">Absent:</span>
+                          <span className="font-semibold text-text">{stats.absent}</span>
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-border">
+                        {stats.pct >= (subject.attendance_goal || goal) ? (
+                          <p className="text-xs text-primary-light">
+                            You can safely miss {stats.safeLeaves} lecture{stats.safeLeaves !== 1 ? 's' : ''}.
+                          </p>
+                        ) : (
+                          <p className="text-xs text-warning">
+                            Need {stats.lecturesNeeded} consecutive lecture{stats.lecturesNeeded !== 1 ? 's' : ''} to reach {subject.attendance_goal || goal}%.
+                          </p>
+                        )}
+                      </div>
+                    </GlassCard>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+        </motion.div>
+
+        {/* AI Insights */}
+        {insights.length > 0 && (
+          <motion.div variants={fadeInUp}>
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles size={16} className="text-primary" />
+              <h3 className="text-sm font-semibold text-text">Smart Insights</h3>
+            </div>
+            <motion.div variants={staggerContainer} className="space-y-3">
+              {insights.map((insight, i) => (
+                <motion.div key={i} variants={fadeInUp} whileHover={{ y: -2 }}>
+                  <GlassCard className="flex items-start gap-3">
+                    <div className={cn(
+                      'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
+                      insight.type === 'warning' ? 'bg-warning/15' : 'bg-primary/15',
+                    )}>
+                      {insight.type === 'warning'
+                        ? <AlertTriangle size={16} className="text-warning" />
+                        : <TrendingUp size={16} className="text-primary" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-text">{insight.title}</p>
+                      <p className="text-xs text-text-muted mt-1">{insight.message}</p>
+                    </div>
+                  </GlassCard>
+                </motion.div>
+              ))}
+            </motion.div>
+          </motion.div>
+        )}
+
+        {error && <div className="bg-error/10 border border-error/30 rounded-xl px-4 py-3 text-sm text-error">{error}</div>}
       </motion.div>
     </DashboardLayout>
+  );
+}
+
+function QuickMarkButton({ label, icon, activeClass, onClick, disabled }: {
+  label: string; icon: React.ReactNode; activeClass: string; onClick: () => void; disabled: boolean;
+}) {
+  return (
+    <motion.button
+      whileTap={{ scale: 0.92 }}
+      whileHover={{ scale: 1.05 }}
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium border transition-all cursor-pointer',
+        'bg-surface-2 border-border-2 text-text-muted hover:text-text',
+        disabled && 'opacity-50 pointer-events-none',
+      )}
+    >
+      {icon} {label}
+    </motion.button>
   );
 }

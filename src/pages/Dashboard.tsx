@@ -7,19 +7,26 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
 import { fadeInUp, staggerContainer, REPLAY_VIEWPORT } from '@/components/motion';
-import { getDashboardData } from '@/services/db';
+import { cn } from '@/lib/utils';
+import { getDashboardData, getTodaysTimetable } from '@/services/db';
+import type { TimetableEntry } from '@/services/db';
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
   const [data, setData] = useState<any>(null);
+  const [todaysClasses, setTodaysClasses] = useState<TimetableEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
-    const result = await getDashboardData(user.id);
+    const [result, ttRes] = await Promise.all([
+      getDashboardData(user.id),
+      getTodaysTimetable(user.id),
+    ]);
     setData(result);
+    setTodaysClasses(ttRes.entries || []);
     setError(null);
     setLoading(false);
   }, [user?.id]);
@@ -76,6 +83,51 @@ export default function Dashboard() {
                 <NavCard title="AI Assistant" icon={Sparkles} to="/ai" />
                 <NavCard title="Scanner" icon={ScanLine} to="/scanner" />
               </div>
+            </motion.div>
+
+            {/* Today's Classes */}
+            <motion.div variants={fadeInUp}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-text">Today's Classes</h3>
+                <Link to="/attendance" className="text-xs text-primary-light hover:text-primary transition-colors">Mark attendance</Link>
+              </div>
+              {todaysClasses.length > 0 ? (
+                <div className="space-y-2">
+                  {todaysClasses.map((entry) => {
+                    const subject = entry.subjects?.name || 'Unknown';
+                    const color = entry.subjects?.color || '#10b981';
+                    return (
+                      <GlassCard key={entry.id} className="flex items-center gap-3 py-3">
+                        <div className="w-1.5 h-10 rounded-full" style={{ backgroundColor: color }} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-text truncate">{subject}</p>
+                          <p className="text-xs text-text-muted flex items-center gap-1.5 mt-0.5">
+                            <Clock size={11} /> {entry.start_time?.slice(0, 5)} – {entry.end_time?.slice(0, 5)}
+                            {entry.room && ` · Room ${entry.room}`}
+                          </p>
+                        </div>
+                        {entry.attendanceStatus ? (
+                          <span className={cn(
+                            'text-xs font-semibold px-3 py-1 rounded-full capitalize',
+                            entry.attendanceStatus === 'present' ? 'bg-primary/10 text-primary-light'
+                              : entry.attendanceStatus === 'absent' ? 'bg-error/10 text-error'
+                              : 'bg-surface-3 text-text-muted',
+                          )}>
+                            {entry.attendanceStatus}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-text-muted px-3 py-1 rounded-full bg-surface-3">Not marked</span>
+                        )}
+                      </GlassCard>
+                    );
+                  })}
+                </div>
+              ) : (
+                <GlassCard className="flex flex-col items-center justify-center py-10">
+                  <CalendarCheck size={24} className="text-text-muted mb-2" />
+                  <p className="text-sm text-text-muted">No classes scheduled for today.</p>
+                </GlassCard>
+              )}
             </motion.div>
 
             {/* Upcoming Assignments + Exams */}

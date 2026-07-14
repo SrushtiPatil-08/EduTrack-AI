@@ -12,6 +12,9 @@ import Scanner from '@/pages/Scanner';
 import Profile from '@/pages/Profile';
 import Settings from '@/pages/Settings';
 import Subjects from '@/pages/Subjects';
+import Semesters from '@/pages/Semesters';
+import Timetable from '@/pages/Timetable';
+import AttendanceCalendar from '@/pages/AttendanceCalendar';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import OnboardingWizard from '@/components/OnboardingWizard';
 
@@ -42,6 +45,9 @@ function AppRoutes() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/subjects" element={<Subjects />} />
+          <Route path="/semesters" element={<Semesters />} />
+          <Route path="/timetable" element={<Timetable />} />
+          <Route path="/calendar" element={<AttendanceCalendar />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

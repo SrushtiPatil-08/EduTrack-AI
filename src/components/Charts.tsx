@@ -2,34 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
+  XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, Cell,
 } from 'recharts';
 import { REPLAY_VIEWPORT } from '@/components/motion';
-
-const weeklyData = [
-  { day: 'Mon', value: 85 },
-  { day: 'Tue', value: 92 },
-  { day: 'Wed', value: 78 },
-  { day: 'Thu', value: 95 },
-  { day: 'Fri', value: 88 },
-  { day: 'Sat', value: 70 },
-  { day: 'Sun', value: 65 },
-];
-
-const gpaData = [
-  { sem: 'S1', gpa: 3.2 },
-  { sem: 'S2', gpa: 3.4 },
-  { sem: 'S3', gpa: 3.5 },
-  { sem: 'S4', gpa: 3.7 },
-];
-
-const subjectData = [
-  { name: 'CS', attendance: 92 },
-  { name: 'Math', attendance: 85 },
-  { name: 'Physics', attendance: 78 },
-  { name: 'English', attendance: 95 },
-  { name: 'Lab', attendance: 88 },
-];
 
 const tooltipStyle = {
   backgroundColor: 'rgba(17,24,17,0.95)',
@@ -39,7 +14,6 @@ const tooltipStyle = {
   color: '#f0fdf4',
 };
 
-// Hook: replay key increments every time element enters viewport
 function useReplayKey() {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, REPLAY_VIEWPORT);
@@ -52,8 +26,29 @@ function useReplayKey() {
   return { ref, key };
 }
 
-// Animated counter that replays on in-view
-function AnimatedCounter({ value, suffix = '', duration = 1.2 }: { value: number; suffix?: string; duration?: number }) {
+export function GPATrend({ data = DEFAULT_GPA }: { data?: { label: string; gpa: number }[] }) {
+  const { ref, key } = useReplayKey();
+
+  return (
+    <div ref={ref} className="w-full">
+      <AnimatePresence mode="wait">
+        <motion.div key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,46,30,0.5)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis domain={[0, 4]} tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Line type="monotone" dataKey="gpa" stroke="#34d399" strokeWidth={2} dot={{ fill: '#10b981', r: 4 }} isAnimationActive animationDuration={900} />
+            </LineChart>
+          </ResponsiveContainer>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export function AnimatedCounter({ value, suffix = '', duration = 1.2 }: { value: number; suffix?: string; duration?: number }) {
   const { ref, key } = useReplayKey();
   const [display, setDisplay] = useState(0);
 
@@ -83,8 +78,7 @@ function AnimatedCounter({ value, suffix = '', duration = 1.2 }: { value: number
   );
 }
 
-// Progress bar that replays on in-view
-function AnimatedProgress({ value, label, color = 'bg-primary' }: { value: number; label: string; color?: string }) {
+export function AnimatedProgress({ value, label, color = 'bg-primary' }: { value: number; label: string; color?: string }) {
   const { ref, key } = useReplayKey();
 
   return (
@@ -105,23 +99,59 @@ function AnimatedProgress({ value, label, color = 'bg-primary' }: { value: numbe
   );
 }
 
-export function AttendanceChart() {
+const DEFAULT_WEEKLY = [
+  { day: 'Mon', value: 85 },
+  { day: 'Tue', value: 92 },
+  { day: 'Wed', value: 78 },
+  { day: 'Thu', value: 88 },
+  { day: 'Fri', value: 95 },
+  { day: 'Sat', value: 70 },
+  { day: 'Sun', value: 0 },
+];
+
+const DEFAULT_MONTHLY = [
+  { month: 'Feb', value: 82 },
+  { month: 'Mar', value: 85 },
+  { month: 'Apr', value: 79 },
+  { month: 'May', value: 88 },
+  { month: 'Jun', value: 91 },
+  { month: 'Jul', value: 86 },
+];
+
+const DEFAULT_SUBJECTS = [
+  { name: 'Math', attendance: 92, color: '#10b981' },
+  { name: 'Physics', attendance: 78, color: '#3b82f6' },
+  { name: 'Chem', attendance: 85, color: '#f59e0b' },
+  { name: 'CS', attendance: 95, color: '#ef4444' },
+];
+
+const DEFAULT_SEMESTER = [
+  { label: 'S1', pct: 82 },
+  { label: 'S2', pct: 85 },
+  { label: 'S3', pct: 79 },
+  { label: 'S4', pct: 88 },
+];
+
+const DEFAULT_GPA = [
+  { label: 'S1', gpa: 3.2 },
+  { label: 'S2', gpa: 3.5 },
+  { label: 'S3', gpa: 3.4 },
+  { label: 'S4', gpa: 3.7 },
+  { label: 'S5', gpa: 3.8 },
+];
+
+export function AttendanceChart({ data = DEFAULT_WEEKLY }: { data?: { day: string; value: number }[] }) {
   const { ref, key } = useReplayKey();
 
   return (
     <div ref={ref} className="w-full">
       <AnimatePresence mode="wait">
-        <motion.div
-          key={key}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
+        <motion.div key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={weeklyData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+            <BarChart data={data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,46,30,0.5)" vertical={false} />
               <XAxis dataKey="day" tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis domain={[0, 100]} tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(16,185,129,0.05)' }} />
               <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="#10b981" isAnimationActive animationDuration={800} />
             </BarChart>
@@ -132,31 +162,26 @@ export function AttendanceChart() {
   );
 }
 
-export function GPATrend() {
+export function MonthlyTrendChart({ data = DEFAULT_MONTHLY }: { data?: { month: string; value: number }[] }) {
   const { ref, key } = useReplayKey();
 
   return (
     <div ref={ref} className="w-full">
       <AnimatePresence mode="wait">
-        <motion.div
-          key={key}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={gpaData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+        <motion.div key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
-                <linearGradient id="gpaGrad" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="attGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
                   <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,46,30,0.5)" vertical={false} />
-              <XAxis dataKey="sem" tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis domain={[2.5, 4]} tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="month" tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis domain={[0, 100]} tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={tooltipStyle} />
-              <Area type="monotone" dataKey="gpa" stroke="#10b981" strokeWidth={2} fill="url(#gpaGrad)" isAnimationActive animationDuration={900} />
+              <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} fill="url(#attGrad)" isAnimationActive animationDuration={900} />
             </AreaChart>
           </ResponsiveContainer>
         </motion.div>
@@ -165,25 +190,24 @@ export function GPATrend() {
   );
 }
 
-export function SubjectAttendanceChart() {
+export function SubjectAttendanceChart({ data = DEFAULT_SUBJECTS }: { data?: { name: string; attendance: number; color: string }[] }) {
   const { ref, key } = useReplayKey();
 
   return (
     <div ref={ref} className="w-full">
       <AnimatePresence mode="wait">
-        <motion.div
-          key={key}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
+        <motion.div key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={subjectData} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
+            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,46,30,0.5)" horizontal={false} />
               <XAxis type="number" domain={[0, 100]} tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="name" tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} width={50} />
+              <YAxis type="category" dataKey="name" tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(16,185,129,0.05)' }} />
-              <Bar dataKey="attendance" radius={[0, 6, 6, 0]} fill="#10b981" isAnimationActive animationDuration={800} />
+              <Bar dataKey="attendance" radius={[0, 6, 6, 0]} isAnimationActive animationDuration={800}>
+                {data.map((entry, i) => (
+                  <Cell key={i} fill={entry.color || '#10b981'} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </motion.div>
@@ -192,25 +216,20 @@ export function SubjectAttendanceChart() {
   );
 }
 
-export function SemesterProgressChart() {
+export function SemesterProgressChart({ data = DEFAULT_SEMESTER }: { data?: { label: string; pct: number }[] }) {
   const { ref, key } = useReplayKey();
 
   return (
     <div ref={ref} className="w-full">
       <AnimatePresence mode="wait">
-        <motion.div
-          key={key}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
+        <motion.div key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={gpaData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,46,30,0.5)" vertical={false} />
-              <XAxis dataKey="sem" tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis domain={[2.5, 4]} tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="label" tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis domain={[0, 100]} tick={{ fill: '#4b7a5e', fontSize: 11 }} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={tooltipStyle} />
-              <Line type="monotone" dataKey="gpa" stroke="#34d399" strokeWidth={2} dot={{ fill: '#10b981', r: 4 }} isAnimationActive animationDuration={900} />
+              <Line type="monotone" dataKey="pct" stroke="#34d399" strokeWidth={2} dot={{ fill: '#10b981', r: 4 }} isAnimationActive animationDuration={900} />
             </LineChart>
           </ResponsiveContainer>
         </motion.div>
@@ -218,5 +237,3 @@ export function SemesterProgressChart() {
     </div>
   );
 }
-
-export { AnimatedCounter, AnimatedProgress };
