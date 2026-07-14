@@ -11,10 +11,12 @@ import AI from '@/pages/AI';
 import Scanner from '@/pages/Scanner';
 import Profile from '@/pages/Profile';
 import Settings from '@/pages/Settings';
+import Subjects from '@/pages/Subjects';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import OnboardingWizard from '@/components/OnboardingWizard';
 
 function AppRoutes() {
-  const { initializing } = useAuth();
+  const { initializing, needsOnboarding } = useAuth();
 
   if (initializing) {
     return (
@@ -25,22 +27,26 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<SignIn />} />
-      <Route path="/signup" element={<SignUp />} />
-      <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/attendance" element={<Attendance />} />
-        <Route path="/assignments" element={<Assignments />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/ai" element={<AI />} />
-        <Route path="/scanner" element={<Scanner />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/settings" element={<Settings />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<SignIn />} />
+        <Route path="/signup" element={<SignUp />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/attendance" element={<Attendance />} />
+          <Route path="/assignments" element={<Assignments />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/ai" element={<AI />} />
+          <Route path="/scanner" element={<Scanner />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/subjects" element={<Subjects />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      {needsOnboarding && <OnboardingWizard />}
+    </>
   );
 }
 

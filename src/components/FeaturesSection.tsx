@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { CalendarCheck, ClipboardList, BarChart3, Sparkles, ScanLine, Mail } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { fadeInUp, staggerContainer } from '@/components/motion';
+import { fadeInUp, staggerContainer, REPLAY_VIEWPORT } from '@/components/motion';
 
 const features = [
   { icon: CalendarCheck, title: 'Smart Attendance', desc: 'One-tap check-ins with streaks, conflict detection, and real-time class insights.', color: 'text-primary' },
@@ -19,7 +19,7 @@ export default function FeaturesSection() {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: '-80px' }}
+          viewport={REPLAY_VIEWPORT}
           variants={staggerContainer}
           className="text-center mb-16"
         >
@@ -37,7 +37,7 @@ export default function FeaturesSection() {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: '-60px' }}
+          viewport={REPLAY_VIEWPORT}
           variants={staggerContainer}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
         >

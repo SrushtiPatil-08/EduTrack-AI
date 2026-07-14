@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { BarChart3, TrendingUp, Sparkles, ArrowRight } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
-import { fadeInUp, staggerContainer, blurReveal } from '@/components/motion';
+import { fadeInUp, staggerContainer, blurReveal, REPLAY_VIEWPORT } from '@/components/motion';
 import { AttendanceChart, GPATrend } from '@/components/Charts';
 
 export default function AnalyticsSection() {
@@ -12,7 +12,7 @@ export default function AnalyticsSection() {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: '-80px' }}
+          viewport={REPLAY_VIEWPORT}
           variants={staggerContainer}
           className="text-center mb-16"
         >
@@ -30,7 +30,7 @@ export default function AnalyticsSection() {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: '-60px' }}
+          viewport={REPLAY_VIEWPORT}
           variants={staggerContainer}
           className="grid grid-cols-1 lg:grid-cols-2 gap-5"
         >
@@ -77,13 +77,13 @@ export default function AnalyticsSection() {
           variants={fadeInUp}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true }}
+          viewport={REPLAY_VIEWPORT}
           className="text-center mt-12"
         >
           <p className="text-sm text-text-muted">
             Full analytics dashboard available after sign up —{' '}
-            <a href="#pricing" onClick={(e) => { e.preventDefault(); document.querySelector('#pricing')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-primary-light font-semibold hover:text-primary transition-colors">
-              see plans
+            <a href="#about" onClick={(e) => { e.preventDefault(); document.querySelector('#about')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-primary-light font-semibold hover:text-primary transition-colors">
+              learn more
             </a>
           </p>
         </motion.div>

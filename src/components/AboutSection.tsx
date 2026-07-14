@@ -4,7 +4,7 @@ import {
   ArrowRight, GraduationCap, Zap,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { fadeInUp, staggerContainer, blurReveal } from '@/components/motion';
+import { fadeInUp, staggerContainer, blurReveal, REPLAY_VIEWPORT } from '@/components/motion';
 
 const workflow = [
   {
@@ -47,7 +47,7 @@ export default function AboutSection() {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: '-80px' }}
+          viewport={REPLAY_VIEWPORT}
           variants={staggerContainer}
           className="text-center mb-16"
         >
@@ -73,7 +73,7 @@ export default function AboutSection() {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: '-60px' }}
+          viewport={REPLAY_VIEWPORT}
           variants={staggerContainer}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
         >
@@ -104,7 +104,7 @@ export default function AboutSection() {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: '-60px' }}
+          viewport={REPLAY_VIEWPORT}
           variants={staggerContainer}
           className="mt-16"
         >
@@ -139,7 +139,7 @@ export default function AboutSection() {
           variants={fadeInUp}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true }}
+          viewport={REPLAY_VIEWPORT}
           className="text-center mt-16"
         >
           <p className="text-sm text-text-muted">

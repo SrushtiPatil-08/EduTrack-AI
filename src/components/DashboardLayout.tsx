@@ -1,10 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, Bell, CalendarCheck, ClipboardList, BarChart3, Sparkles, ScanLine, LogOut, ChevronRight } from 'lucide-react';
+import { GraduationCap, Bell, CalendarCheck, ClipboardList, BarChart3, Sparkles, ScanLine, LogOut, ChevronRight, BookOpen } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+  { path: '/subjects', label: 'Subjects', icon: BookOpen },
   { path: '/attendance', label: 'Attendance', icon: CalendarCheck },
   { path: '/assignments', label: 'Assignments', icon: ClipboardList },
   { path: '/analytics', label: 'Analytics', icon: BarChart3 },
@@ -13,9 +14,9 @@ const navItems = [
 ];
 
 export default function DashboardLayout({ children, title }: { children: React.ReactNode; title?: string }) {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut: handleSignOut } = useAuth();
   const navigate = useNavigate();
-  const firstName = user?.name?.split(' ')[0] || 'there';
+  const firstName = profile?.full_name?.split(' ')[0] || user?.name?.split(' ')[0] || 'there';
 
   return (
     <div className="min-h-screen bg-bg flex">
@@ -63,7 +64,7 @@ export default function DashboardLayout({ children, title }: { children: React.R
               <span className="text-xs">Settings</span>
             </Link>
             <button
-              onClick={async () => { await signOut(); navigate('/'); }}
+              onClick={async () => { await handleSignOut(); navigate('/'); }}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-error hover:bg-error/10 transition-all"
             >
               <LogOut size={16} />

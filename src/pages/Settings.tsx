@@ -1,21 +1,148 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Moon, Bell, Globe, Shield, HelpCircle, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Moon, Bell, Globe, Shield, HelpCircle, LogOut, Save, Check, User } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { fadeInUp, staggerContainer } from '@/components/motion';
+import { fadeInUp, staggerContainer, REPLAY_VIEWPORT } from '@/components/motion';
+import { updateProfile } from '@/services/db';
 import { cn } from '@/lib/utils';
 
 export default function Settings() {
-  const { signOut } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [form, setForm] = useState({
+    full_name: '',
+    college_name: '',
+    branch: '',
+    semester: 1,
+    academic_year: '',
+    attendance_goal: 75,
+  });
+
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        full_name: profile.full_name || '',
+        college_name: profile.college_name || '',
+        branch: profile.branch || '',
+        semester: profile.semester || 1,
+        academic_year: profile.academic_year || '',
+        attendance_goal: profile.attendance_goal || 75,
+      });
+    }
+  }, [profile]);
+
+  const update = (field: string, value: any) => setForm((prev) => ({ ...prev, [field]: value }));
+
+  const handleSave = async () => {
+    if (!user?.id) return;
+    setSaving(true);
+    setError(null);
+    const { error: err } = await updateProfile(user.id, form);
+    setSaving(false);
+    if (err) {
+      setError(err);
+    } else {
+      setSaved(true);
+      await refreshProfile();
+      setTimeout(() => setSaved(false), 2500);
+    }
+  };
 
   return (
     <DashboardLayout title="Settings">
-      <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-6 max-w-2xl">
+      <motion.div initial="hidden" whileInView="visible" viewport={REPLAY_VIEWPORT} variants={staggerContainer} className="space-y-6 max-w-2xl">
+        {/* Profile editing */}
+        <motion.div variants={fadeInUp}>
+          <h3 className="text-sm font-semibold text-text mb-3">Profile</h3>
+          <GlassCard>
+            <div className="space-y-4">
+              <Input
+                id="full_name"
+                label="Full Name"
+                type="text"
+                value={form.full_name}
+                onChange={(e) => update('full_name', e.target.value)}
+              />
+              <Input
+                id="college_name"
+                label="College / University"
+                type="text"
+                value={form.college_name}
+                onChange={(e) => update('college_name', e.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  id="branch"
+                  label="Branch / Major"
+                  type="text"
+                  value={form.branch}
+                  onChange={(e) => update('branch', e.target.value)}
+                />
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Semester</label>
+                  <select
+                    value={form.semester}
+                    onChange={(e) => update('semester', Number(e.target.value))}
+                    className="w-full h-12 px-4 rounded-xl bg-surface-2 border border-border-2 text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                      <option key={s} value={s}>Semester {s}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  id="academic_year"
+                  label="Academic Year"
+                  type="text"
+                  placeholder="2025-2026"
+                  value={form.academic_year}
+                  onChange={(e) => update('academic_year', e.target.value)}
+                />
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Attendance Goal</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min={50}
+                      max={100}
+                      value={form.attendance_goal}
+                      onChange={(e) => update('attendance_goal', Number(e.target.value))}
+                      className="flex-1 accent-primary cursor-pointer"
+                    />
+                    <span className="text-sm font-semibold text-text w-12 text-right">{form.attendance_goal}%</span>
+                  </div>
+                </div>
+              </div>
+
+              {error && <p className="text-sm text-error">{error}</p>}
+
+              <div className="flex items-center gap-3 pt-2">
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? 'Saving…' : saved ? (
+                    <><Check size={16} /> Saved!</>
+                  ) : (
+                    <><Save size={16} /> Save Changes</>
+                  )}
+                </Button>
+                {saved && <span className="text-sm text-primary-light">Profile updated successfully</span>}
+              </div>
+            </div>
+          </GlassCard>
+        </motion.div>
+
+        {/* Preferences */}
         <motion.div variants={fadeInUp}>
           <h3 className="text-sm font-semibold text-text mb-3">Preferences</h3>
           <GlassCard className="p-0 overflow-hidden">
@@ -25,6 +152,7 @@ export default function Settings() {
           </GlassCard>
         </motion.div>
 
+        {/* Support */}
         <motion.div variants={fadeInUp}>
           <h3 className="text-sm font-semibold text-text mb-3">Support</h3>
           <GlassCard className="p-0 overflow-hidden">
@@ -33,6 +161,7 @@ export default function Settings() {
           </GlassCard>
         </motion.div>
 
+        {/* Sign out */}
         <motion.div variants={fadeInUp}>
           <button
             onClick={async () => { await signOut(); navigate('/'); }}
@@ -43,7 +172,7 @@ export default function Settings() {
           </button>
         </motion.div>
 
-        <p className="text-center text-xs text-text-muted">EduTrack AI v1.0.0 · Phase 1 Foundation</p>
+        <p className="text-center text-xs text-text-muted">EduTrack AI v1.0.0 · Phase 2 Student Platform</p>
       </motion.div>
     </DashboardLayout>
   );

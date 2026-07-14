@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { fadeInUp, staggerContainer } from '@/components/motion';
+import { fadeInUp, staggerContainer, REPLAY_VIEWPORT } from '@/components/motion';
 
 const faqs = [
   { q: 'Is EduTrack AI free?', a: 'Yes — core features are free during early access. Premium AI features may come later.' },
@@ -20,7 +20,7 @@ export default function FAQSection() {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: '-80px' }}
+          viewport={REPLAY_VIEWPORT}
           variants={staggerContainer}
           className="text-center mb-16"
         >
@@ -35,7 +35,7 @@ export default function FAQSection() {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: '-60px' }}
+          viewport={REPLAY_VIEWPORT}
           variants={staggerContainer}
           className="space-y-3"
         >

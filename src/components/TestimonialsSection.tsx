@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { fadeInUp, staggerContainer } from '@/components/motion';
+import { fadeInUp, staggerContainer, REPLAY_VIEWPORT } from '@/components/motion';
 
 const testimonials = [
   { name: 'Sara K.', role: 'CS Major', text: 'I finally stopped missing assignments. The AI assistant is a lifesaver during finals week.' },
@@ -16,7 +16,7 @@ export default function TestimonialsSection() {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: '-80px' }}
+          viewport={REPLAY_VIEWPORT}
           variants={staggerContainer}
           className="text-center mb-16"
         >
@@ -31,7 +31,7 @@ export default function TestimonialsSection() {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: '-60px' }}
+          viewport={REPLAY_VIEWPORT}
           variants={staggerContainer}
           className="grid grid-cols-1 md:grid-cols-3 gap-5"
         >
