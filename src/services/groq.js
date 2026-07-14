@@ -29,4 +29,28 @@ export async function askGroq(prompt, context = {}) {
   }
 }
 
-export default { askGroq };
+export async function parseTimetableImage(file) {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) return { error: 'Supabase not configured.' };
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/timetable-import`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${anonKey}`,
+      },
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Timetable import failed.' };
+    return { result: data, error: null };
+  } catch (e) {
+    return { error: e.message, result: null };
+  }
+}
+
+export default { askGroq, parseTimetableImage };

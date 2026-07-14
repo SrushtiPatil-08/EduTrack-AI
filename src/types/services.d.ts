@@ -14,6 +14,7 @@ declare module '@/services/supabase' {
 
 declare module '@/services/groq' {
   export function askGroq(prompt: string, context?: any): Promise<{ reply?: string; error?: string | null }>;
+  export function parseTimetableImage(file: File): Promise<{ result?: any; error?: string | null }>;
 }
 
 declare module '@/services/resend' {
