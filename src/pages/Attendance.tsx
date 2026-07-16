@@ -48,7 +48,7 @@ export default function Attendance() {
   const handleQuickMark = async (entry: TimetableEntry, status: 'present' | 'absent' | 'cancelled') => {
     if (!user?.id || !entry.subject_id) return;
     setMarking(entry.id);
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local tz
     // Check if already marked
     const existing = attendance.find(
       (a) => a.date === today && (a.timetable_entry_id === entry.id || a.subject_id === entry.subject_id)

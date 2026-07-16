@@ -69,16 +69,14 @@ export default function Semesters() {
     };
     if (editing) {
       const { error: err } = await updateSemester(editing.id, data);
-      if (err) setError(err);
+      if (err) { setError(err); setSubmitting(false); return; }
     } else {
       const { error: err } = await createSemester(user.id, data);
-      if (err) setError(err);
+      if (err) { setError(err); setSubmitting(false); return; }
     }
     setSubmitting(false);
-    if (!error) {
-      setModalOpen(false);
-      await loadData();
-    }
+    setModalOpen(false);
+    await loadData();
   };
 
   const handleDelete = async (id: string) => {

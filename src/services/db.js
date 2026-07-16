@@ -1,8 +1,28 @@
 import { supabase } from './supabase';
 
+// Convert empty strings to null — prevents "invalid input syntax for type uuid: \"\""
+function toNull(v) {
+  if (v === '' || v === undefined) return null;
+  return v;
+}
+
+// Guard: only run a query if the ID is a non-empty string
+function validId(v) {
+  return typeof v === 'string' && v.length > 0;
+}
+
+// Timezone-safe local date string (never uses toISOString)
+function getLocalDateString(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 // ─── PROFILES ───
 
 export async function getProfile(userId) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -13,6 +33,7 @@ export async function getProfile(userId) {
 }
 
 export async function createProfile(userId, profileData) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('profiles')
     .insert({ id: userId, ...profileData, onboarding_completed: true })
@@ -23,6 +44,7 @@ export async function createProfile(userId, profileData) {
 }
 
 export async function updateProfile(userId, updates) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('profiles')
     .update(updates)
@@ -36,6 +58,7 @@ export async function updateProfile(userId, updates) {
 // ─── SUBJECTS ───
 
 export async function getSubjects(userId) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('subjects')
     .select('*')
@@ -46,9 +69,10 @@ export async function getSubjects(userId) {
 }
 
 export async function createSubject(userId, subjectData) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('subjects')
-    .insert({ user_id: userId, ...subjectData })
+    .insert({ user_id: userId, ...subjectData, semester_id: toNull(subjectData.semester_id) })
     .select()
     .single();
   if (error) return { error: error.message };
@@ -56,9 +80,10 @@ export async function createSubject(userId, subjectData) {
 }
 
 export async function updateSubject(subjectId, updates) {
+  if (!validId(subjectId)) return { error: 'Missing subject ID' };
   const { data, error } = await supabase
     .from('subjects')
-    .update(updates)
+    .update({ ...updates, semester_id: toNull(updates.semester_id) })
     .eq('id', subjectId)
     .select()
     .single();
@@ -67,6 +92,7 @@ export async function updateSubject(subjectId, updates) {
 }
 
 export async function deleteSubject(subjectId) {
+  if (!validId(subjectId)) return { error: 'Missing subject ID' };
   const { error } = await supabase
     .from('subjects')
     .delete()
@@ -78,6 +104,7 @@ export async function deleteSubject(subjectId) {
 // ─── ATTENDANCE ───
 
 export async function getAttendance(userId, opts = {}) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   let query = supabase.from('attendance').select('*').eq('user_id', userId);
   if (opts.subjectId) query = query.eq('subject_id', opts.subjectId);
   if (opts.startDate) query = query.gte('date', opts.startDate);
@@ -89,9 +116,10 @@ export async function getAttendance(userId, opts = {}) {
 }
 
 export async function createAttendance(userId, attendanceData) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('attendance')
-    .insert({ user_id: userId, ...attendanceData })
+    .insert({ user_id: userId, ...attendanceData, subject_id: toNull(attendanceData.subject_id), timetable_entry_id: toNull(attendanceData.timetable_entry_id) })
     .select()
     .single();
   if (error) return { error: error.message };
@@ -99,6 +127,7 @@ export async function createAttendance(userId, attendanceData) {
 }
 
 export async function updateAttendance(attendanceId, updates) {
+  if (!validId(attendanceId)) return { error: 'Missing attendance ID' };
   const { data, error } = await supabase
     .from('attendance')
     .update(updates)
@@ -110,6 +139,7 @@ export async function updateAttendance(attendanceId, updates) {
 }
 
 export async function deleteAttendance(attendanceId) {
+  if (!validId(attendanceId)) return { error: 'Missing attendance ID' };
   const { error } = await supabase
     .from('attendance')
     .delete()
@@ -121,6 +151,7 @@ export async function deleteAttendance(attendanceId) {
 // ─── ASSIGNMENTS ───
 
 export async function getAssignments(userId, opts = {}) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   let query = supabase.from('assignments').select('*, subjects(name)').eq('user_id', userId);
   if (opts.status) query = query.eq('status', opts.status);
   query = query.order('due_date', { ascending: true, nullsFirst: false });
@@ -130,9 +161,10 @@ export async function getAssignments(userId, opts = {}) {
 }
 
 export async function createAssignment(userId, assignmentData) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('assignments')
-    .insert({ user_id: userId, ...assignmentData })
+    .insert({ user_id: userId, ...assignmentData, subject_id: toNull(assignmentData.subject_id) })
     .select()
     .single();
   if (error) return { error: error.message };
@@ -140,6 +172,7 @@ export async function createAssignment(userId, assignmentData) {
 }
 
 export async function updateAssignment(assignmentId, updates) {
+  if (!validId(assignmentId)) return { error: 'Missing assignment ID' };
   const { data, error } = await supabase
     .from('assignments')
     .update(updates)
@@ -151,6 +184,7 @@ export async function updateAssignment(assignmentId, updates) {
 }
 
 export async function deleteAssignment(assignmentId) {
+  if (!validId(assignmentId)) return { error: 'Missing assignment ID' };
   const { error } = await supabase
     .from('assignments')
     .delete()
@@ -162,8 +196,9 @@ export async function deleteAssignment(assignmentId) {
 // ─── EXAMS ───
 
 export async function getExams(userId, opts = {}) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   let query = supabase.from('exams').select('*, subjects(name)').eq('user_id', userId);
-  if (opts.upcomingOnly) query = query.gte('exam_date', new Date().toISOString().split('T')[0]);
+  if (opts.upcomingOnly) query = query.gte('exam_date', getLocalDateString());
   query = query.order('exam_date', { ascending: true });
   const { data, error } = await query;
   if (error) return { error: error.message };
@@ -171,9 +206,10 @@ export async function getExams(userId, opts = {}) {
 }
 
 export async function createExam(userId, examData) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('exams')
-    .insert({ user_id: userId, ...examData })
+    .insert({ user_id: userId, ...examData, subject_id: toNull(examData.subject_id) })
     .select()
     .single();
   if (error) return { error: error.message };
@@ -181,6 +217,7 @@ export async function createExam(userId, examData) {
 }
 
 export async function updateExam(examId, updates) {
+  if (!validId(examId)) return { error: 'Missing exam ID' };
   const { data, error } = await supabase
     .from('exams')
     .update(updates)
@@ -192,6 +229,7 @@ export async function updateExam(examId, updates) {
 }
 
 export async function deleteExam(examId) {
+  if (!validId(examId)) return { error: 'Missing exam ID' };
   const { error } = await supabase
     .from('exams')
     .delete()
@@ -203,6 +241,7 @@ export async function deleteExam(examId) {
 // ─── NOTIFICATIONS ───
 
 export async function getNotifications(userId) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('notifications')
     .select('*')
@@ -213,6 +252,7 @@ export async function getNotifications(userId) {
 }
 
 export async function createNotification(userId, notificationData) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('notifications')
     .insert({ user_id: userId, ...notificationData })
@@ -223,6 +263,7 @@ export async function createNotification(userId, notificationData) {
 }
 
 export async function markNotificationRead(notificationId) {
+  if (!validId(notificationId)) return { error: 'Missing notification ID' };
   const { data, error } = await supabase
     .from('notifications')
     .update({ read: true })
@@ -234,6 +275,7 @@ export async function markNotificationRead(notificationId) {
 }
 
 export async function deleteNotification(notificationId) {
+  if (!validId(notificationId)) return { error: 'Missing notification ID' };
   const { error } = await supabase
     .from('notifications')
     .delete()
@@ -245,6 +287,7 @@ export async function deleteNotification(notificationId) {
 // ─── SEMESTERS ───
 
 export async function getSemesters(userId) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('semesters')
     .select('*')
@@ -255,6 +298,7 @@ export async function getSemesters(userId) {
 }
 
 export async function createSemester(userId, semesterData) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('semesters')
     .insert({ user_id: userId, ...semesterData })
@@ -265,6 +309,7 @@ export async function createSemester(userId, semesterData) {
 }
 
 export async function updateSemester(semesterId, updates) {
+  if (!validId(semesterId)) return { error: 'Missing semester ID' };
   const { data, error } = await supabase
     .from('semesters')
     .update(updates)
@@ -276,6 +321,7 @@ export async function updateSemester(semesterId, updates) {
 }
 
 export async function deleteSemester(semesterId) {
+  if (!validId(semesterId)) return { error: 'Missing semester ID' };
   const { error } = await supabase
     .from('semesters')
     .delete()
@@ -285,6 +331,7 @@ export async function deleteSemester(semesterId) {
 }
 
 export async function setActiveSemester(userId, semesterId) {
+  if (!validId(userId) || !validId(semesterId)) return { error: 'Missing ID' };
   // First, deactivate all semesters for this user
   await supabase
     .from('semesters')
@@ -305,6 +352,7 @@ export async function setActiveSemester(userId, semesterId) {
 // ─── TIMETABLE PROFILES ───
 
 export async function getTimetableProfiles(userId) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('timetable_profiles')
     .select('*')
@@ -315,6 +363,7 @@ export async function getTimetableProfiles(userId) {
 }
 
 export async function createTimetableProfile(userId, profileData) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('timetable_profiles')
     .insert({ user_id: userId, ...profileData })
@@ -325,6 +374,7 @@ export async function createTimetableProfile(userId, profileData) {
 }
 
 export async function updateTimetableProfile(profileId, updates) {
+  if (!validId(profileId)) return { error: 'Missing profile ID' };
   const { data, error } = await supabase
     .from('timetable_profiles')
     .update(updates)
@@ -336,6 +386,7 @@ export async function updateTimetableProfile(profileId, updates) {
 }
 
 export async function deleteTimetableProfile(profileId) {
+  if (!validId(profileId)) return { error: 'Missing profile ID' };
   const { error } = await supabase
     .from('timetable_profiles')
     .delete()
@@ -345,6 +396,7 @@ export async function deleteTimetableProfile(profileId) {
 }
 
 export async function setActiveTimetableProfile(userId, profileId) {
+  if (!validId(userId) || !validId(profileId)) return { error: 'Missing ID' };
   // Deactivate all profiles for this user
   await supabase
     .from('timetable_profiles')
@@ -363,6 +415,7 @@ export async function setActiveTimetableProfile(userId, profileId) {
 }
 
 export async function duplicateTimetableProfile(userId, profileId, newName) {
+  if (!validId(userId) || !validId(profileId)) return { error: 'Missing ID' };
   // Fetch the original profile and its entries
   const { data: profile } = await supabase
     .from('timetable_profiles')
@@ -405,6 +458,7 @@ export async function duplicateTimetableProfile(userId, profileId, newName) {
 // ─── TIMETABLE ENTRIES ───
 
 export async function getTimetableEntries(userId, profileId) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   let query = supabase.from('timetable_entries').select('*, subjects(name,color)').eq('user_id', userId);
   if (profileId) query = query.eq('profile_id', profileId);
   query = query.order('day_of_week', { ascending: true }).order('start_time', { ascending: true });
@@ -414,9 +468,10 @@ export async function getTimetableEntries(userId, profileId) {
 }
 
 export async function createTimetableEntry(userId, entryData) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('timetable_entries')
-    .insert({ user_id: userId, ...entryData })
+    .insert({ user_id: userId, ...entryData, subject_id: toNull(entryData.subject_id) })
     .select()
     .single();
   if (error) return { error: error.message };
@@ -424,6 +479,7 @@ export async function createTimetableEntry(userId, entryData) {
 }
 
 export async function updateTimetableEntry(entryId, updates) {
+  if (!validId(entryId)) return { error: 'Missing entry ID' };
   const { data, error } = await supabase
     .from('timetable_entries')
     .update(updates)
@@ -435,6 +491,7 @@ export async function updateTimetableEntry(entryId, updates) {
 }
 
 export async function deleteTimetableEntry(entryId) {
+  if (!validId(entryId)) return { error: 'Missing entry ID' };
   const { error } = await supabase
     .from('timetable_entries')
     .delete()
@@ -446,6 +503,7 @@ export async function deleteTimetableEntry(entryId) {
 // ─── ATTENDANCE OVERRIDES ───
 
 export async function getAttendanceOverrides(userId, opts = {}) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   let query = supabase.from('attendance_overrides').select('*').eq('user_id', userId);
   if (opts.date) query = query.eq('date', opts.date);
   if (opts.startDate) query = query.gte('date', opts.startDate);
@@ -457,9 +515,10 @@ export async function getAttendanceOverrides(userId, opts = {}) {
 }
 
 export async function createAttendanceOverride(userId, overrideData) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('attendance_overrides')
-    .insert({ user_id: userId, ...overrideData })
+    .insert({ user_id: userId, ...overrideData, entry_id: toNull(overrideData.entry_id), replacement_subject_id: toNull(overrideData.replacement_subject_id) })
     .select()
     .single();
   if (error) return { error: error.message };
@@ -467,6 +526,7 @@ export async function createAttendanceOverride(userId, overrideData) {
 }
 
 export async function deleteAttendanceOverride(overrideId) {
+  if (!validId(overrideId)) return { error: 'Missing override ID' };
   const { error } = await supabase
     .from('attendance_overrides')
     .delete()
@@ -478,6 +538,7 @@ export async function deleteAttendanceOverride(overrideId) {
 // ─── CALENDAR EVENTS ───
 
 export async function getCalendarEvents(userId, opts = {}) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   let query = supabase.from('calendar_events').select('*').eq('user_id', userId);
   if (opts.startDate) query = query.gte('date', opts.startDate);
   if (opts.endDate) query = query.lte('date', opts.endDate);
@@ -488,6 +549,7 @@ export async function getCalendarEvents(userId, opts = {}) {
 }
 
 export async function createCalendarEvent(userId, eventData) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const { data, error } = await supabase
     .from('calendar_events')
     .insert({ user_id: userId, ...eventData })
@@ -498,6 +560,7 @@ export async function createCalendarEvent(userId, eventData) {
 }
 
 export async function deleteCalendarEvent(eventId) {
+  if (!validId(eventId)) return { error: 'Missing event ID' };
   const { error } = await supabase
     .from('calendar_events')
     .delete()
@@ -555,7 +618,7 @@ export function calculateWeeklyAttendance(attendance) {
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(d);
     const dayRecords = attendance.filter((a) => a.date === dateStr);
     const present = dayRecords.filter((a) => a.status === 'present').length;
     const conducted = dayRecords.filter((a) => a.status === 'present' || a.status === 'absent').length;
@@ -633,6 +696,7 @@ export function generateAttendanceInsights(attendance, subjects, goal = 75) {
 // ─── DASHBOARD AGGREGATE ───
 
 export async function getDashboardData(userId) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   const [subjectsRes, attendanceRes, assignmentsRes, examsRes] = await Promise.all([
     getSubjects(userId),
     getAttendance(userId),
@@ -681,6 +745,7 @@ export async function getDashboardData(userId) {
 // ─── TODAY'S TIMETABLE ───
 
 export async function getTodaysTimetable(userId) {
+  if (!validId(userId)) return { error: 'Missing user ID' };
   // Get active timetable profile
   const { data: profile } = await supabase
     .from('timetable_profiles')
@@ -692,7 +757,7 @@ export async function getTodaysTimetable(userId) {
   if (!profile) return { entries: [], overrides: [] };
 
   const dayOfWeek = new Date().getDay();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
 
   // Get today's entries
   const { data: entries, error: entriesErr } = await supabase

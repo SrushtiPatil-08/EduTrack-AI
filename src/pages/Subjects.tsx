@@ -91,16 +91,14 @@ export default function Subjects() {
     const payload = { ...form, semester_id: form.semester_id || null };
     if (editing) {
       const { error: err } = await updateSubject(editing.id, payload);
-      if (err) setError(err);
+      if (err) { setError(err); setSubmitting(false); return; }
     } else {
       const { error: err } = await createSubject(user.id, payload);
-      if (err) setError(err);
+      if (err) { setError(err); setSubmitting(false); return; }
     }
     setSubmitting(false);
-    if (!error) {
-      setModalOpen(false);
-      await loadSubjects();
-    }
+    setModalOpen(false);
+    await loadSubjects();
   };
 
   const handleDelete = async (subjectId: string) => {

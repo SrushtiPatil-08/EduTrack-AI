@@ -63,7 +63,7 @@ export default function AttendanceCalendar() {
     const startWeekday = firstDay.getDay();
     const daysInMonth = lastDay.getDate();
     const prevMonthDays = new Date(year, month, 0).getDate();
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local tz
 
     const cells: DayCell[] = [];
     const attByDate = new Map<string, AttendanceRecord[]>();
@@ -79,16 +79,16 @@ export default function AttendanceCalendar() {
 
     for (let i = startWeekday - 1; i >= 0; i--) {
       const day = prevMonthDays - i;
-      const date = new Date(year, month - 1, day).toISOString().split('T')[0];
+      const date = new Date(year, month - 1, day).toLocaleDateString('en-CA');
       cells.push({ date, day, inMonth: false, isToday: false, records: attByDate.get(date) || [], events: evtByDate.get(date) || [] });
     }
     for (let d = 1; d <= daysInMonth; d++) {
-      const date = new Date(year, month, d).toISOString().split('T')[0];
+      const date = new Date(year, month, d).toLocaleDateString('en-CA');
       cells.push({ date, day: d, inMonth: true, isToday: date === today, records: attByDate.get(date) || [], events: evtByDate.get(date) || [] });
     }
     const remaining = 42 - cells.length;
     for (let d = 1; d <= remaining; d++) {
-      const date = new Date(year, month + 1, d).toISOString().split('T')[0];
+      const date = new Date(year, month + 1, d).toLocaleDateString('en-CA');
       cells.push({ date, day: d, inMonth: false, isToday: false, records: attByDate.get(date) || [], events: evtByDate.get(date) || [] });
     }
     return cells;
