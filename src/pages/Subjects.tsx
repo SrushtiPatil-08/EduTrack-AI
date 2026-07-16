@@ -88,11 +88,12 @@ export default function Subjects() {
     if (!user?.id || !form.name.trim()) return;
     setSubmitting(true);
     setError(null);
+    const payload = { ...form, semester_id: form.semester_id || null };
     if (editing) {
-      const { error: err } = await updateSubject(editing.id, form);
+      const { error: err } = await updateSubject(editing.id, payload);
       if (err) setError(err);
     } else {
-      const { error: err } = await createSubject(user.id, form);
+      const { error: err } = await createSubject(user.id, payload);
       if (err) setError(err);
     }
     setSubmitting(false);
