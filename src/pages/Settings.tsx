@@ -4,12 +4,18 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Moon, Bell, Globe, Shield, HelpCircle, LogOut, Save, Check, User, Hash, Award, Users, Phone, Calendar, Link as LinkIcon, Github, Linkedin } from 'lucide-react';
+import { Moon, Bell, Globe, Shield, HelpCircle, LogOut, Save, Check, User, Hash, Award, Users, Phone, Calendar, Link as LinkIcon, Github, Linkedin, CalendarClock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { fadeInUp, staggerContainer, REPLAY_VIEWPORT } from '@/components/motion';
 import { updateProfile } from '@/services/db';
 import { cn } from '@/lib/utils';
+import {
+  PERFORMANCE_TYPES, PERFORMANCE_LABELS, performanceLabel, maxScoreFor,
+  WORKING_DAYS_PRESETS, WEEKDAY_KEYS, WEEKDAY_LABELS,
+  detectWorkingDaysPreset, serializeWorkingDays, parseWorkingDays,
+  validateProfileForm,
+} from '@/lib/profile';
 
 export default function Settings() {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -40,7 +46,14 @@ export default function Settings() {
     target_cgpa: '' as string | number,
     guardian_name: '',
     guardian_phone: '',
+    performance_type: 'cgpa' as 'gpa' | 'cgpa' | 'percentage',
+    current_score: '' as string | number,
+    target_score: '' as string | number,
+    working_days: 'mon-fri',
+    working_days_preset: 'mon-fri' as 'mon-fri' | 'mon-sat' | 'sat-only' | 'custom',
+    default_lecture_type: 'theory' as 'theory' | 'practical' | 'tutorial',
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (profile) {
@@ -65,6 +78,12 @@ export default function Settings() {
         target_cgpa: profile.target_cgpa ?? '',
         guardian_name: profile.guardian_name || '',
         guardian_phone: profile.guardian_phone || '',
+        performance_type: (profile.performance_type as 'gpa' | 'cgpa' | 'percentage') || 'cgpa',
+        current_score: profile.current_score ?? '',
+        target_score: profile.target_score ?? '',
+        working_days: profile.working_days || 'mon-fri',
+        working_days_preset: detectWorkingDaysPreset(profile.working_days),
+        default_lecture_type: (profile.default_lecture_type as 'theory' | 'practical' | 'tutorial') || 'theory',
       });
     }
   }, [profile]);
@@ -73,6 +92,18 @@ export default function Settings() {
 
   const handleSave = async () => {
     if (!user?.id) return;
+    const values = {
+      ...form,
+      current_score: form.current_score === '' ? '' : Number(form.current_score),
+      target_score: form.target_score === '' ? '' : Number(form.target_score),
+    };
+    const formErrors = validateProfileForm(values);
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
+      setError('Please fix the highlighted fields.');
+      return;
+    }
+    setErrors({});
     setSaving(true);
     setError(null);
     const payload = {
@@ -80,6 +111,8 @@ export default function Settings() {
       batch_year: Number(form.batch_year) || null,
       current_cgpa: form.current_cgpa === '' ? null : Number(form.current_cgpa),
       target_cgpa: form.target_cgpa === '' ? null : Number(form.target_cgpa),
+      current_score: form.current_score === '' ? null : Number(form.current_score),
+      target_score: form.target_score === '' ? null : Number(form.target_score),
       date_of_birth: form.date_of_birth || null,
     };
     const { error: err } = await updateProfile(user.id, payload);
@@ -238,7 +271,7 @@ export default function Settings() {
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   id="current_cgpa"
-                  label="Current CGPA"
+                  label="Current CGPA (legacy)"
                   type="number"
                   step="0.01"
                   min="0"
@@ -249,7 +282,7 @@ export default function Settings() {
                 />
                 <Input
                   id="target_cgpa"
-                  label="Target CGPA"
+                  label="Target CGPA (legacy)"
                   type="number"
                   step="0.01"
                   min="0"
@@ -259,6 +292,154 @@ export default function Settings() {
                   onChange={(e) => update('target_cgpa', e.target.value)}
                 />
               </div>
+              {errors.roll_number && <p className="text-xs text-error">{errors.roll_number}</p>}
+              {errors.degree && <p className="text-xs text-error">{errors.degree}</p>}
+              {errors.batch_year && <p className="text-xs text-error">{errors.batch_year}</p>}
+            </div>
+          </GlassCard>
+        </motion.div>
+
+        {/* Performance & Schedule */}
+        <motion.div variants={fadeInUp}>
+          <h3 className="text-sm font-semibold text-text mb-3">Performance & Schedule</h3>
+          <GlassCard>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Performance Type</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {PERFORMANCE_TYPES.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => update('performance_type', t)}
+                      className={cn(
+                        'h-11 rounded-xl text-sm font-medium transition-all cursor-pointer border',
+                        form.performance_type === t
+                          ? 'bg-primary/15 border-primary/40 text-primary-light'
+                          : 'bg-surface-2 border-border-2 text-text-muted hover:text-text',
+                      )}
+                    >
+                      {PERFORMANCE_LABELS[t]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
+                    Current {performanceLabel(form.performance_type)}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={maxScoreFor(form.performance_type)}
+                    placeholder={`e.g. ${maxScoreFor(form.performance_type) === 100 ? '78' : '8.5'}`}
+                    value={form.current_score}
+                    onChange={(e) => update('current_score', e.target.value)}
+                    className="w-full h-12 px-4 rounded-xl bg-surface-2 border border-border-2 text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                  {errors.current_score && <p className="text-xs text-error mt-1">{errors.current_score}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
+                    Target {performanceLabel(form.performance_type)}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={maxScoreFor(form.performance_type)}
+                    placeholder={`e.g. ${maxScoreFor(form.performance_type) === 100 ? '85' : '9.0'}`}
+                    value={form.target_score}
+                    onChange={(e) => update('target_score', e.target.value)}
+                    className="w-full h-12 px-4 rounded-xl bg-surface-2 border border-border-2 text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                  {errors.target_score && <p className="text-xs text-error mt-1">{errors.target_score}</p>}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Working Days</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {WORKING_DAYS_PRESETS.map((p) => {
+                    const labels: Record<string, string> = {
+                      'mon-fri': 'Monday–Friday',
+                      'mon-sat': 'Monday–Saturday',
+                      'sat-only': 'Saturday Only',
+                      'custom': 'Custom',
+                    };
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => {
+                          update('working_days_preset', p);
+                          if (p !== 'custom') update('working_days', p);
+                        }}
+                        className={cn(
+                          'h-11 rounded-xl text-sm font-medium transition-all cursor-pointer border',
+                          form.working_days_preset === p
+                            ? 'bg-primary/15 border-primary/40 text-primary-light'
+                            : 'bg-surface-2 border-border-2 text-text-muted hover:text-text',
+                        )}
+                      >
+                        {labels[p]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {form.working_days_preset === 'custom' && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Select days</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {WEEKDAY_KEYS.map((d) => {
+                      const selected = parseWorkingDays(form.working_days).includes(d);
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => {
+                            const current = parseWorkingDays(form.working_days);
+                            const next = selected ? current.filter((x) => x !== d) : [...current, d];
+                            update('working_days', serializeWorkingDays(next));
+                          }}
+                          className={cn(
+                            'w-11 h-11 rounded-xl text-xs font-semibold transition-all cursor-pointer border',
+                            selected
+                              ? 'bg-primary/15 border-primary/40 text-primary-light'
+                              : 'bg-surface-2 border-border-2 text-text-muted hover:text-text',
+                          )}
+                        >
+                          {WEEKDAY_LABELS[d]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {errors.working_days && <p className="text-xs text-error mt-1">{errors.working_days}</p>}
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Default Lecture Type</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['theory', 'practical', 'tutorial'] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => update('default_lecture_type', t)}
+                      className={cn(
+                        'h-11 rounded-xl text-sm font-medium capitalize transition-all cursor-pointer border',
+                        form.default_lecture_type === t
+                          ? 'bg-primary/15 border-primary/40 text-primary-light'
+                          : 'bg-surface-2 border-border-2 text-text-muted hover:text-text',
+                      )}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {errors.attendance_goal && <p className="text-xs text-error">{errors.attendance_goal}</p>}
             </div>
           </GlassCard>
         </motion.div>

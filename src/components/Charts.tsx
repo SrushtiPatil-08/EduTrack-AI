@@ -3,6 +3,7 @@ import { motion, useInView, AnimatePresence } from 'framer-motion';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, Cell,
+  PieChart, Pie, Legend, RadialBarChart, RadialBar,
 } from 'recharts';
 import { REPLAY_VIEWPORT } from '@/components/motion';
 
@@ -232,6 +233,66 @@ export function SemesterProgressChart({ data = DEFAULT_SEMESTER }: { data?: { la
               <Line type="monotone" dataKey="pct" stroke="#34d399" strokeWidth={2} dot={{ fill: '#10b981', r: 4 }} isAnimationActive animationDuration={900} />
             </LineChart>
           </ResponsiveContainer>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export function AttendanceDistributionChart({ data }: { data: { name: string; value: number; color: string }[] }) {
+  const { ref, key } = useReplayKey();
+
+  return (
+    <div ref={ref} className="w-full">
+      <AnimatePresence mode="wait">
+        <motion.div key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={45}
+                outerRadius={75}
+                paddingAngle={3}
+                isAnimationActive
+                animationDuration={900}
+              >
+                {data.map((entry, i) => (
+                  <Cell key={i} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={tooltipStyle} />
+              <Legend wrapperStyle={{ fontSize: 11, color: '#4b7a5e' }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export function GoalProgressChart({ pct, goal }: { pct: number; goal: number }) {
+  const { ref, key } = useReplayKey();
+  const progress = Math.min(100, goal > 0 ? (pct / goal) * 100 : 0);
+  const data = [{ name: 'Progress', value: progress }, { name: 'Remaining', value: Math.max(0, 100 - progress) }];
+
+  return (
+    <div ref={ref} className="w-full">
+      <AnimatePresence mode="wait">
+        <motion.div key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+          <ResponsiveContainer width="100%" height={200}>
+            <RadialBarChart data={data} innerRadius="60%" outerRadius="100%" startAngle={90} endAngle={-270}>
+              <RadialBar dataKey="value" cornerRadius={8} fill="#10b981" background={{ fill: 'rgba(30,46,30,0.4)' }} isAnimationActive animationDuration={900} />
+              <Tooltip contentStyle={tooltipStyle} />
+            </RadialBarChart>
+          </ResponsiveContainer>
+          <div className="text-center -mt-32">
+            <p className="text-2xl font-bold text-text">{pct}%</p>
+            <p className="text-xs text-text-muted">Goal: {goal}%</p>
+          </div>
         </motion.div>
       </AnimatePresence>
     </div>

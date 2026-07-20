@@ -1,19 +1,27 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap, ArrowRight, ArrowLeft, Check, Upload, User, Building2, BookOpen, CalendarDays, Target, Hash, Award, Users } from 'lucide-react';
+import { GraduationCap, ArrowRight, ArrowLeft, Check, Upload, User, Building2, BookOpen, CalendarDays, Target, Hash, Award, Users, CalendarClock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { createProfile } from '@/services/db';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
+import {
+  PERFORMANCE_TYPES, PERFORMANCE_LABELS, performanceLabel, maxScoreFor,
+  WORKING_DAYS_PRESETS, WEEKDAY_KEYS, WEEKDAY_LABELS,
+  detectWorkingDaysPreset, serializeWorkingDays, parseWorkingDays,
+  validateProfileForm,
+} from '@/lib/profile';
 
 const steps = [
   { id: 0, label: 'Name', icon: User },
   { id: 1, label: 'College', icon: Building2 },
   { id: 2, label: 'Academics', icon: BookOpen },
   { id: 3, label: 'Setup', icon: Hash },
-  { id: 4, label: 'Goal', icon: Target },
-  { id: 5, label: 'Avatar', icon: Upload },
+  { id: 4, label: 'Performance', icon: Award },
+  { id: 5, label: 'Schedule', icon: CalendarClock },
+  { id: 6, label: 'Goal', icon: Target },
+  { id: 7, label: 'Avatar', icon: Upload },
 ];
 
 const subjectColors = [
@@ -45,7 +53,14 @@ export default function OnboardingWizard() {
     degree: 'B.Tech',
     section: '',
     batch_year: new Date().getFullYear(),
+    performance_type: 'cgpa' as 'gpa' | 'cgpa' | 'percentage',
+    current_score: '' as string | number,
+    target_score: '' as string | number,
+    working_days: 'mon-fri',
+    working_days_preset: 'mon-fri' as 'mon-fri' | 'mon-sat' | 'sat-only' | 'custom',
+    default_lecture_type: 'theory' as 'theory' | 'practical' | 'tutorial',
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const update = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -61,6 +76,16 @@ export default function OnboardingWizard() {
 
   const handleSubmit = async () => {
     if (!user?.id) return;
+    const values = {
+      ...formData,
+      current_score: formData.current_score === '' ? '' : Number(formData.current_score),
+      target_score: formData.target_score === '' ? '' : Number(formData.target_score),
+    };
+    const formErrors = validateProfileForm(values);
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     const { error: err } = await createProfile(user.id, {
@@ -75,6 +100,11 @@ export default function OnboardingWizard() {
       degree: formData.degree || null,
       section: formData.section || null,
       batch_year: Number(formData.batch_year) || null,
+      performance_type: formData.performance_type,
+      current_score: formData.current_score === '' ? null : Number(formData.current_score),
+      target_score: formData.target_score === '' ? null : Number(formData.target_score),
+      working_days: formData.working_days,
+      default_lecture_type: formData.default_lecture_type,
     });
     setSubmitting(false);
     if (err) {
@@ -85,8 +115,20 @@ export default function OnboardingWizard() {
   };
 
   const canProceed = () => {
+    const values = {
+      ...formData,
+      current_score: formData.current_score === '' ? '' : Number(formData.current_score),
+      target_score: formData.target_score === '' ? '' : Number(formData.target_score),
+    };
+    const formErrors = validateProfileForm(values);
+    // Only block on errors relevant to the current step
     if (step === 0) return formData.full_name.trim().length >= 2;
     if (step === 1) return formData.college_name.trim().length >= 2;
+    if (step === 2) return !formErrors.branch && !formErrors.semester && !formErrors.academic_year;
+    if (step === 3) return !formErrors.roll_number && !formErrors.degree && !formErrors.batch_year;
+    if (step === 4) return !formErrors.performance_type && !formErrors.current_score && !formErrors.target_score;
+    if (step === 5) return !formErrors.working_days && !formErrors.default_lecture_type;
+    if (step === 6) return !formErrors.attendance_goal;
     return true;
   };
 
@@ -263,6 +305,161 @@ export default function OnboardingWizard() {
               {step === 4 && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-2">
+                    <Award size={16} className="text-primary" />
+                    <span className="text-sm font-semibold text-text">Academic performance</span>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">Performance Type</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {PERFORMANCE_TYPES.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => update('performance_type', t)}
+                          className={cn(
+                            'h-11 rounded-xl text-sm font-medium transition-all cursor-pointer border',
+                            formData.performance_type === t
+                              ? 'bg-primary/15 border-primary/40 text-primary-light'
+                              : 'bg-surface-2 border-border-2 text-text-muted hover:text-text',
+                          )}
+                        >
+                          {PERFORMANCE_LABELS[t]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-2">
+                        Current {performanceLabel(formData.performance_type)}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={maxScoreFor(formData.performance_type)}
+                        placeholder={`e.g. ${maxScoreFor(formData.performance_type) === 100 ? '78' : '8.5'}`}
+                        value={formData.current_score}
+                        onChange={(e) => update('current_score', e.target.value)}
+                        className="w-full h-12 px-4 rounded-xl bg-surface-2 border border-border-2 text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                      />
+                      {errors.current_score && <p className="text-xs text-error mt-1">{errors.current_score}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-2">
+                        Target {performanceLabel(formData.performance_type)}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={maxScoreFor(formData.performance_type)}
+                        placeholder={`e.g. ${maxScoreFor(formData.performance_type) === 100 ? '85' : '9.0'}`}
+                        value={formData.target_score}
+                        onChange={(e) => update('target_score', e.target.value)}
+                        className="w-full h-12 px-4 rounded-xl bg-surface-2 border border-border-2 text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                      />
+                      {errors.target_score && <p className="text-xs text-error mt-1">{errors.target_score}</p>}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {step === 5 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CalendarClock size={16} className="text-primary" />
+                    <span className="text-sm font-semibold text-text">Working days & schedule</span>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">Working Days</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {WORKING_DAYS_PRESETS.map((p) => {
+                        const labels: Record<string, string> = {
+                          'mon-fri': 'Monday–Friday',
+                          'mon-sat': 'Monday–Saturday',
+                          'sat-only': 'Saturday Only',
+                          'custom': 'Custom',
+                        };
+                        return (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => {
+                              update('working_days_preset', p);
+                              if (p !== 'custom') update('working_days', p);
+                            }}
+                            className={cn(
+                              'h-11 rounded-xl text-sm font-medium transition-all cursor-pointer border',
+                              formData.working_days_preset === p
+                                ? 'bg-primary/15 border-primary/40 text-primary-light'
+                                : 'bg-surface-2 border-border-2 text-text-muted hover:text-text',
+                            )}
+                          >
+                            {labels[p]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {formData.working_days_preset === 'custom' && (
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-2">Select days</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {WEEKDAY_KEYS.map((d) => {
+                          const selected = parseWorkingDays(formData.working_days).includes(d);
+                          return (
+                            <button
+                              key={d}
+                              type="button"
+                              onClick={() => {
+                                const current = parseWorkingDays(formData.working_days);
+                                const next = selected
+                                  ? current.filter((x) => x !== d)
+                                  : [...current, d];
+                                update('working_days', serializeWorkingDays(next));
+                              }}
+                              className={cn(
+                                'w-11 h-11 rounded-xl text-xs font-semibold transition-all cursor-pointer border',
+                                selected
+                                  ? 'bg-primary/15 border-primary/40 text-primary-light'
+                                  : 'bg-surface-2 border-border-2 text-text-muted hover:text-text',
+                              )}
+                            >
+                              {WEEKDAY_LABELS[d]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {errors.working_days && <p className="text-xs text-error mt-1">{errors.working_days}</p>}
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">Default Lecture Type</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['theory', 'practical', 'tutorial'] as const).map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => update('default_lecture_type', t)}
+                          className={cn(
+                            'h-11 rounded-xl text-sm font-medium capitalize transition-all cursor-pointer border',
+                            formData.default_lecture_type === t
+                              ? 'bg-primary/15 border-primary/40 text-primary-light'
+                              : 'bg-surface-2 border-border-2 text-text-muted hover:text-text',
+                          )}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {step === 6 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
                     <Target size={16} className="text-primary" />
                     <span className="text-sm font-semibold text-text">Set your attendance goal</span>
                   </div>
@@ -283,10 +480,11 @@ export default function OnboardingWizard() {
                     <span>75% (default)</span>
                     <span>100%</span>
                   </div>
+                  {errors.attendance_goal && <p className="text-xs text-error mt-1">{errors.attendance_goal}</p>}
                 </div>
               )}
 
-              {step === 5 && (
+              {step === 7 && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Upload size={16} className="text-primary" />

@@ -57,6 +57,11 @@ declare module '@/services/db' {
     target_cgpa: number | null;
     guardian_name: string | null;
     guardian_phone: string | null;
+    performance_type: 'gpa' | 'cgpa' | 'percentage';
+    current_score: number | null;
+    target_score: number | null;
+    working_days: string;
+    default_lecture_type: 'theory' | 'practical' | 'tutorial';
     created_at: string;
     updated_at: string;
   }
@@ -73,6 +78,8 @@ declare module '@/services/db' {
     color: string;
     semester_id: string | null;
     attendance_goal: number | null;
+    subject_code: string | null;
+    semester: number | null;
     created_at: string;
     updated_at: string;
   }
@@ -82,9 +89,11 @@ declare module '@/services/db' {
     user_id: string;
     subject_id: string | null;
     date: string;
-    status: 'present' | 'absent' | 'excused' | 'cancelled';
+    status: 'present' | 'absent' | 'excused' | 'cancelled' | 'holiday';
     notes: string | null;
     timetable_entry_id: string | null;
+    lecture_type: 'theory' | 'practical' | 'tutorial';
+    remarks: string | null;
     created_at: string;
   }
 
@@ -231,6 +240,10 @@ declare module '@/services/db' {
   export function deleteCalendarEvent(eventId: string): Promise<{ error?: string }>;
   export function calculateSubjectAttendance(attendance: AttendanceRecord[], subjectId: string, goal?: number): any;
   export function calculateOverallAttendance(attendance: AttendanceRecord[]): any;
+  export function calculateTodaysAttendance(attendance: AttendanceRecord[]): any;
+  export function calculateSubjectExtremes(attendance: AttendanceRecord[], subjects: Subject[], goal?: number): { best: any; weakest: any };
+  export function calculateRiskSubjects(attendance: AttendanceRecord[], subjects: Subject[], goal?: number): any[];
+  export function findDuplicateAttendance(attendance: AttendanceRecord[], subjectId: string, date: string, lectureType?: string): AttendanceRecord | undefined;
   export function calculateWeeklyAttendance(attendance: AttendanceRecord[]): any[];
   export function calculateMonthlyAttendance(attendance: AttendanceRecord[]): any[];
   export function generateAttendanceInsights(attendance: AttendanceRecord[], subjects: Subject[], goal?: number): any[];

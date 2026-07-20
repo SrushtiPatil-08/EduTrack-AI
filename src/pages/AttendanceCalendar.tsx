@@ -124,8 +124,8 @@ export default function AttendanceCalendar() {
         <motion.div variants={fadeInUp} className="flex flex-wrap items-center gap-4">
           <LegendItem icon={<Check size={12} />} color="bg-primary/15 text-primary-light" label="Present" />
           <LegendItem icon={<X size={12} />} color="bg-error/15 text-error" label="Absent" />
+          <LegendItem icon={<Calendar size={12} />} color="bg-info/15 text-info" label="Holiday" />
           <LegendItem icon={<Minus size={12} />} color="bg-surface-3 text-text-muted" label="Cancelled" />
-          <LegendItem icon={<Calendar size={12} />} color="bg-warning/15 text-warning" label="Holiday / Event" />
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -157,6 +157,7 @@ export default function AttendanceCalendar() {
                   const hasPresent = cell.records.some((r) => r.status === 'present');
                   const hasAbsent = cell.records.some((r) => r.status === 'absent');
                   const hasCancelled = cell.records.some((r) => r.status === 'cancelled');
+                  const hasHoliday = cell.records.some((r) => r.status === 'holiday');
                   const hasEvent = cell.events.length > 0;
                   return (
                     <button
@@ -172,10 +173,11 @@ export default function AttendanceCalendar() {
                       )}
                     >
                       <span className={cn('font-medium', cell.isToday ? 'text-primary-light' : 'text-text')}>{cell.day}</span>
-                      {(hasPresent || hasAbsent || hasCancelled || hasEvent) && (
+                      {(hasPresent || hasAbsent || hasCancelled || hasHoliday || hasEvent) && (
                         <div className="flex items-center gap-0.5">
                           {hasPresent && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
                           {hasAbsent && <div className="w-1.5 h-1.5 rounded-full bg-error" />}
+                          {hasHoliday && <div className="w-1.5 h-1.5 rounded-full bg-info" />}
                           {hasCancelled && <div className="w-1.5 h-1.5 rounded-full bg-text-muted" />}
                           {hasEvent && <div className="w-1.5 h-1.5 rounded-full bg-warning" />}
                         </div>

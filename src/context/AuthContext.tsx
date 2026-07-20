@@ -42,6 +42,11 @@ type Profile = {
   target_cgpa: number | null;
   guardian_name: string | null;
   guardian_phone: string | null;
+  performance_type: 'gpa' | 'cgpa' | 'percentage' | null;
+  current_score: number | null;
+  target_score: number | null;
+  working_days: string | null;
+  default_lecture_type: 'theory' | 'practical' | 'tutorial' | null;
 } | null;
 
 type AuthContextValue = {

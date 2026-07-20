@@ -5,6 +5,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { fadeInUp, staggerContainer, REPLAY_VIEWPORT } from '@/components/motion';
 import {
   AttendanceChart, MonthlyTrendChart, SubjectAttendanceChart, SemesterProgressChart, AnimatedCounter,
+  AttendanceDistributionChart, GoalProgressChart,
 } from '@/components/Charts';
 import { CalendarCheck, TrendingUp, Award, Target, BookOpen, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';

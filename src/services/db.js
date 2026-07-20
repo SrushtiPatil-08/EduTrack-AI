@@ -577,27 +577,39 @@ export function calculateSubjectAttendance(attendance, subjectId, goal = 75) {
   const present = records.filter((a) => a.status === 'present').length;
   const absent = records.filter((a) => a.status === 'absent').length;
   const cancelled = records.filter((a) => a.status === 'cancelled').length;
+  const holiday = records.filter((a) => a.status === 'holiday').length;
   const excused = records.filter((a) => a.status === 'excused').length;
-  const conducted = present + absent; // cancelled & excused don't count
+  const conducted = present + absent; // cancelled, holiday & excused don't count
+  const total = conducted + cancelled + holiday + excused;
   const pct = conducted > 0 ? Math.round((present / conducted) * 100) : 0;
 
-  // Calculate safe leaves: how many consecutive absences before dropping below goal
-  // (present / (conducted + x)) >= goal/100 => x <= present/goal - conducted
-  let safeLeaves = 0;
+  // Safe bunks: how many consecutive absences before dropping below goal
+  let safeBunks = 0;
   if (conducted > 0) {
-    safeLeaves = Math.floor((present * 100) / goal - conducted);
-    if (safeLeaves < 0) safeLeaves = 0;
+    safeBunks = Math.floor((present * 100) / goal - conducted);
+    if (safeBunks < 0) safeBunks = 0;
   }
 
-  // Calculate lectures needed to reach goal
-  // Need: present + y / (conducted + y) >= goal/100 => y >= (goal*conducted - 100*present) / (100 - goal)
-  let lecturesNeeded = 0;
+  // Remaining bunks: alias of safeBunks (lectures you can still miss safely)
+  const remainingBunks = safeBunks;
+
+  // Lectures required: consecutive present lectures needed to reach goal
+  let lecturesRequired = 0;
   if (pct < goal && conducted > 0) {
-    lecturesNeeded = Math.ceil((goal * conducted - 100 * present) / (100 - goal));
-    if (lecturesNeeded < 0) lecturesNeeded = 0;
+    lecturesRequired = Math.ceil((goal * conducted - 100 * present) / (100 - goal));
+    if (lecturesRequired < 0) lecturesRequired = 0;
   }
 
-  return { present, absent, cancelled, excused, conducted, pct, safeLeaves, lecturesNeeded, goal };
+  // Goal progress (0-100)
+  const goalProgress = goal > 0 ? Math.min(100, Math.round((pct / goal) * 100)) : 0;
+
+  return {
+    present, absent, cancelled, holiday, excused, conducted, total,
+    pct, safeBunks, remainingBunks, lecturesRequired, goal, goalProgress,
+    // Backward-compatible aliases
+    safeLeaves: safeBunks,
+    lecturesNeeded: lecturesRequired,
+  };
 }
 
 // Calculate overall attendance
@@ -605,9 +617,65 @@ export function calculateOverallAttendance(attendance) {
   const present = attendance.filter((a) => a.status === 'present').length;
   const absent = attendance.filter((a) => a.status === 'absent').length;
   const cancelled = attendance.filter((a) => a.status === 'cancelled').length;
+  const holiday = attendance.filter((a) => a.status === 'holiday').length;
+  const conducted = present + absent;
+  const total = attendance.length;
+  const pct = conducted > 0 ? Math.round((present / conducted) * 100) : 0;
+  return { present, absent, cancelled, holiday, conducted, total, pct };
+}
+
+// Today's attendance summary
+export function calculateTodaysAttendance(attendance) {
+  const today = getLocalDateString();
+  const todayRecords = attendance.filter((a) => a.date === today);
+  const present = todayRecords.filter((a) => a.status === 'present').length;
+  const absent = todayRecords.filter((a) => a.status === 'absent').length;
+  const cancelled = todayRecords.filter((a) => a.status === 'cancelled').length;
+  const holiday = todayRecords.filter((a) => a.status === 'holiday').length;
   const conducted = present + absent;
   const pct = conducted > 0 ? Math.round((present / conducted) * 100) : 0;
-  return { present, absent, cancelled, conducted, pct };
+  const pending = 0; // computed by caller against timetable if desired
+  return { present, absent, cancelled, holiday, conducted, pct, pending, records: todayRecords };
+}
+
+// Best and weakest subjects by attendance %
+export function calculateSubjectExtremes(attendance, subjects, goal = 75) {
+  if (subjects.length === 0) return { best: null, weakest: null };
+  let best = null;
+  let weakest = null;
+  for (const s of subjects) {
+    const stats = calculateSubjectAttendance(attendance, s.id, s.attendance_goal || goal);
+    if (stats.conducted === 0) continue;
+    if (!best || stats.pct > best.pct) best = { ...s, ...stats };
+    if (!weakest || stats.pct < weakest.pct) weakest = { ...s, ...stats };
+  }
+  return { best, weakest };
+}
+
+// Upcoming risk subjects: below goal and close to a critical threshold
+export function calculateRiskSubjects(attendance, subjects, goal = 75) {
+  const risks = [];
+  for (const s of subjects) {
+    const stats = calculateSubjectAttendance(attendance, s.id, s.attendance_goal || goal);
+    if (stats.conducted === 0) continue;
+    const subjectGoal = s.attendance_goal || goal;
+    if (stats.pct < subjectGoal) {
+      risks.push({
+        ...s,
+        ...stats,
+        deficit: subjectGoal - stats.pct,
+        lecturesRequired: stats.lecturesRequired,
+      });
+    }
+  }
+  return risks.sort((a, b) => b.deficit - a.deficit);
+}
+
+// Check for duplicate attendance (same subject + date + lecture_type)
+export function findDuplicateAttendance(attendance, subjectId, date, lectureType) {
+  return attendance.find(
+    (a) => a.subject_id === subjectId && a.date === date && (a.lecture_type || 'theory') === (lectureType || 'theory'),
+  );
 }
 
 // Calculate weekly attendance data for charts
