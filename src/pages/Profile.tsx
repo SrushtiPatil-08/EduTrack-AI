@@ -5,7 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
-import { Mail, CalendarCheck, ClipboardList, Award, Settings, LogOut, ChevronRight, Building2, BookOpen, CalendarDays, Target } from 'lucide-react';
+import { Mail, CalendarCheck, ClipboardList, Award, Settings, LogOut, ChevronRight, Building2, BookOpen, CalendarDays, Target, Hash, Phone, GraduationCap, Users, Link as LinkIcon, Github, Linkedin } from 'lucide-react';
 import { fadeInUp, staggerContainer, REPLAY_VIEWPORT } from '@/components/motion';
 import { getDashboardData } from '@/services/db';
 
@@ -69,11 +69,44 @@ export default function Profile() {
           <GlassCard className="p-0 overflow-hidden">
             <Row icon={Building2} label="College" value={profile?.college_name || 'Not set'} />
             <Row icon={BookOpen} label="Branch / Major" value={profile?.branch || 'Not set'} />
+            <Row icon={GraduationCap} label="Degree" value={profile?.degree || 'Not set'} />
+            <Row icon={Hash} label="Roll Number" value={profile?.roll_number || 'Not set'} />
+            <Row icon={Users} label="Section" value={profile?.section || 'Not set'} />
             <Row icon={CalendarDays} label="Semester" value={profile?.semester ? `Semester ${profile.semester}` : 'Not set'} />
             <Row icon={CalendarDays} label="Academic Year" value={profile?.academic_year || 'Not set'} />
-            <Row icon={Target} label="Attendance Goal" value={`${profile?.attendance_goal || 75}%`} last />
+            <Row icon={CalendarDays} label="Batch Year" value={profile?.batch_year ? String(profile.batch_year) : 'Not set'} />
+            <Row icon={Target} label="Attendance Goal" value={`${profile?.attendance_goal || 75}%`} />
+            <Row icon={Award} label="Current / Target CGPA" value={(profile?.current_cgpa != null || profile?.target_cgpa != null) ? `${profile?.current_cgpa ?? '—'} / ${profile?.target_cgpa ?? '—'}` : 'Not set'} last />
           </GlassCard>
         </motion.div>
+
+        {/* Contact & Social */}
+        {(profile?.phone || profile?.date_of_birth || profile?.linkedin_url || profile?.github_url || profile?.bio || profile?.guardian_name) && (
+          <motion.div variants={fadeInUp}>
+            <h3 className="text-sm font-semibold text-text mb-3">Contact & Social</h3>
+            <GlassCard className="p-0 overflow-hidden">
+              {profile?.phone && <Row icon={Phone} label="Phone" value={profile.phone} />}
+              {profile?.date_of_birth && <Row icon={CalendarDays} label="Date of Birth" value={new Date(profile.date_of_birth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} />}
+              {profile?.guardian_name && <Row icon={Users} label="Guardian" value={profile.guardian_phone ? `${profile.guardian_name} · ${profile.guardian_phone}` : profile.guardian_name} />}
+              {profile?.linkedin_url && (
+                <a href={profile.linkedin_url} target="_blank" rel="noreferrer" className="w-full">
+                  <Row icon={Linkedin} label="LinkedIn" value={profile.linkedin_url.replace(/^https?:\/\/(www\.)?/, '').replace(/^linkedin\.com\/in\//, 'in/')} />
+                </a>
+              )}
+              {profile?.github_url && (
+                <a href={profile.github_url} target="_blank" rel="noreferrer" className="w-full">
+                  <Row icon={Github} label="GitHub" value={profile.github_url.replace(/^https?:\/\/(www\.)?/, '').replace(/^github\.com\//, '')} last={!profile?.bio} />
+                </a>
+              )}
+              {profile?.bio && (
+                <div className="px-5 py-4 border-t border-border">
+                  <p className="text-xs text-text-muted mb-1">Bio</p>
+                  <p className="text-sm text-text">{profile.bio}</p>
+                </div>
+              )}
+            </GlassCard>
+          </motion.div>
+        )}
 
         {/* Account */}
         <motion.div variants={fadeInUp}>

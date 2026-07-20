@@ -43,6 +43,20 @@ declare module '@/services/db' {
     attendance_goal: number;
     avatar_url: string | null;
     onboarding_completed: boolean;
+    roll_number: string | null;
+    degree: string | null;
+    section: string | null;
+    batch_year: number | null;
+    phone: string | null;
+    date_of_birth: string | null;
+    gender: 'male' | 'female' | 'other' | 'prefer_not_to_say' | null;
+    bio: string | null;
+    linkedin_url: string | null;
+    github_url: string | null;
+    current_cgpa: number | null;
+    target_cgpa: number | null;
+    guardian_name: string | null;
+    guardian_phone: string | null;
     created_at: string;
     updated_at: string;
   }

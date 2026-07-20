@@ -4,7 +4,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Moon, Bell, Globe, Shield, HelpCircle, LogOut, Save, Check, User } from 'lucide-react';
+import { Moon, Bell, Globe, Shield, HelpCircle, LogOut, Save, Check, User, Hash, Award, Users, Phone, Calendar, Link as LinkIcon, Github, Linkedin } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { fadeInUp, staggerContainer, REPLAY_VIEWPORT } from '@/components/motion';
@@ -26,6 +26,20 @@ export default function Settings() {
     semester: 1,
     academic_year: '',
     attendance_goal: 75,
+    roll_number: '',
+    degree: 'B.Tech',
+    section: '',
+    batch_year: new Date().getFullYear(),
+    phone: '',
+    date_of_birth: '',
+    gender: 'prefer_not_to_say' as 'male' | 'female' | 'other' | 'prefer_not_to_say',
+    bio: '',
+    linkedin_url: '',
+    github_url: '',
+    current_cgpa: '' as string | number,
+    target_cgpa: '' as string | number,
+    guardian_name: '',
+    guardian_phone: '',
   });
 
   useEffect(() => {
@@ -37,6 +51,20 @@ export default function Settings() {
         semester: profile.semester || 1,
         academic_year: profile.academic_year || '',
         attendance_goal: profile.attendance_goal || 75,
+        roll_number: profile.roll_number || '',
+        degree: profile.degree || 'B.Tech',
+        section: profile.section || '',
+        batch_year: profile.batch_year || new Date().getFullYear(),
+        phone: profile.phone || '',
+        date_of_birth: profile.date_of_birth || '',
+        gender: profile.gender || 'prefer_not_to_say',
+        bio: profile.bio || '',
+        linkedin_url: profile.linkedin_url || '',
+        github_url: profile.github_url || '',
+        current_cgpa: profile.current_cgpa ?? '',
+        target_cgpa: profile.target_cgpa ?? '',
+        guardian_name: profile.guardian_name || '',
+        guardian_phone: profile.guardian_phone || '',
       });
     }
   }, [profile]);
@@ -47,7 +75,14 @@ export default function Settings() {
     if (!user?.id) return;
     setSaving(true);
     setError(null);
-    const { error: err } = await updateProfile(user.id, form);
+    const payload = {
+      ...form,
+      batch_year: Number(form.batch_year) || null,
+      current_cgpa: form.current_cgpa === '' ? null : Number(form.current_cgpa),
+      target_cgpa: form.target_cgpa === '' ? null : Number(form.target_cgpa),
+      date_of_birth: form.date_of_birth || null,
+    };
+    const { error: err } = await updateProfile(user.id, payload);
     setSaving(false);
     if (err) {
       setError(err);
@@ -137,6 +172,162 @@ export default function Settings() {
                   )}
                 </Button>
                 {saved && <span className="text-sm text-primary-light">Profile updated successfully</span>}
+              </div>
+            </div>
+          </GlassCard>
+        </motion.div>
+
+        {/* Academic Setup */}
+        <motion.div variants={fadeInUp}>
+          <h3 className="text-sm font-semibold text-text mb-3">Academic Setup</h3>
+          <GlassCard>
+            <div className="space-y-4">
+              <Input
+                id="roll_number"
+                label="Roll / Enrollment Number"
+                type="text"
+                placeholder="e.g. 21CS0101"
+                value={form.roll_number}
+                onChange={(e) => update('roll_number', e.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Degree</label>
+                  <select
+                    value={form.degree}
+                    onChange={(e) => update('degree', e.target.value)}
+                    className="w-full h-12 px-4 rounded-xl bg-surface-2 border border-border-2 text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                  >
+                    {['B.Tech','M.Tech','B.E.','M.E.','B.Sc','M.Sc','B.Com','M.Com','B.A.','M.A.','BCA','MCA','BBA','MBA','Ph.D','Other'].map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <Input
+                  id="section"
+                  label="Section"
+                  type="text"
+                  placeholder="e.g. A"
+                  value={form.section}
+                  onChange={(e) => update('section', e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  id="batch_year"
+                  label="Batch Year"
+                  type="number"
+                  placeholder="e.g. 2023"
+                  value={form.batch_year}
+                  onChange={(e) => update('batch_year', e.target.value)}
+                />
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Gender</label>
+                  <select
+                    value={form.gender}
+                    onChange={(e) => update('gender', e.target.value)}
+                    className="w-full h-12 px-4 rounded-xl bg-surface-2 border border-border-2 text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                  >
+                    <option value="prefer_not_to_say">Prefer not to say</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  id="current_cgpa"
+                  label="Current CGPA"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="10"
+                  placeholder="e.g. 8.5"
+                  value={form.current_cgpa}
+                  onChange={(e) => update('current_cgpa', e.target.value)}
+                />
+                <Input
+                  id="target_cgpa"
+                  label="Target CGPA"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="10"
+                  placeholder="e.g. 9.0"
+                  value={form.target_cgpa}
+                  onChange={(e) => update('target_cgpa', e.target.value)}
+                />
+              </div>
+            </div>
+          </GlassCard>
+        </motion.div>
+
+        {/* Contact & Social */}
+        <motion.div variants={fadeInUp}>
+          <h3 className="text-sm font-semibold text-text mb-3">Contact & Social</h3>
+          <GlassCard>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  id="phone"
+                  label="Phone"
+                  type="tel"
+                  placeholder="e.g. +91 98765 43210"
+                  value={form.phone}
+                  onChange={(e) => update('phone', e.target.value)}
+                />
+                <Input
+                  id="date_of_birth"
+                  label="Date of Birth"
+                  type="date"
+                  value={form.date_of_birth}
+                  onChange={(e) => update('date_of_birth', e.target.value)}
+                />
+              </div>
+              <Input
+                id="linkedin_url"
+                label="LinkedIn URL"
+                type="url"
+                placeholder="https://linkedin.com/in/..."
+                value={form.linkedin_url}
+                onChange={(e) => update('linkedin_url', e.target.value)}
+              />
+              <Input
+                id="github_url"
+                label="GitHub URL"
+                type="url"
+                placeholder="https://github.com/..."
+                value={form.github_url}
+                onChange={(e) => update('github_url', e.target.value)}
+              />
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Bio</label>
+                <textarea
+                  rows={3}
+                  placeholder="A short academic or personal bio..."
+                  value={form.bio}
+                  onChange={(e) => update('bio', e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-surface-2 border border-border-2 text-text placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  id="guardian_name"
+                  label="Guardian Name"
+                  type="text"
+                  placeholder="Parent / guardian"
+                  value={form.guardian_name}
+                  onChange={(e) => update('guardian_name', e.target.value)}
+                />
+                <Input
+                  id="guardian_phone"
+                  label="Guardian Phone"
+                  type="tel"
+                  placeholder="Guardian contact"
+                  value={form.guardian_phone}
+                  onChange={(e) => update('guardian_phone', e.target.value)}
+                />
               </div>
             </div>
           </GlassCard>

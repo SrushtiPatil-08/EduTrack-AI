@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap, ArrowRight, ArrowLeft, Check, Upload, User, Building2, BookOpen, CalendarDays, Target } from 'lucide-react';
+import { GraduationCap, ArrowRight, ArrowLeft, Check, Upload, User, Building2, BookOpen, CalendarDays, Target, Hash, Award, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { createProfile } from '@/services/db';
 import { Button } from '@/components/ui/Button';
@@ -11,13 +11,20 @@ const steps = [
   { id: 0, label: 'Name', icon: User },
   { id: 1, label: 'College', icon: Building2 },
   { id: 2, label: 'Academics', icon: BookOpen },
-  { id: 3, label: 'Goal', icon: Target },
-  { id: 4, label: 'Avatar', icon: Upload },
+  { id: 3, label: 'Setup', icon: Hash },
+  { id: 4, label: 'Goal', icon: Target },
+  { id: 5, label: 'Avatar', icon: Upload },
 ];
 
 const subjectColors = [
   '#10b981', '#3b82f6', '#f59e0b', '#ef4444',
   '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
+];
+
+const DEGREE_OPTIONS = [
+  'B.Tech', 'M.Tech', 'B.E.', 'M.E.', 'B.Sc', 'M.Sc',
+  'B.Com', 'M.Com', 'B.A.', 'M.A.', 'BCA', 'MCA',
+  'BBA', 'MBA', 'Ph.D', 'Other',
 ];
 
 export default function OnboardingWizard() {
@@ -34,6 +41,10 @@ export default function OnboardingWizard() {
     academic_year: '',
     attendance_goal: 75,
     avatar_url: '',
+    roll_number: '',
+    degree: 'B.Tech',
+    section: '',
+    batch_year: new Date().getFullYear(),
   });
 
   const update = (field: string, value: any) => {
@@ -60,6 +71,10 @@ export default function OnboardingWizard() {
       academic_year: formData.academic_year || null,
       attendance_goal: Number(formData.attendance_goal) || 75,
       avatar_url: formData.avatar_url || null,
+      roll_number: formData.roll_number || null,
+      degree: formData.degree || null,
+      section: formData.section || null,
+      batch_year: Number(formData.batch_year) || null,
     });
     setSubmitting(false);
     if (err) {
@@ -200,6 +215,54 @@ export default function OnboardingWizard() {
               {step === 3 && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-2">
+                    <Hash size={16} className="text-primary" />
+                    <span className="text-sm font-semibold text-text">Academic setup</span>
+                  </div>
+                  <Input
+                    id="roll_number"
+                    label="Roll / Enrollment Number"
+                    type="text"
+                    placeholder="e.g. 21CS0101"
+                    value={formData.roll_number}
+                    onChange={(e) => update('roll_number', e.target.value)}
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-2">Degree</label>
+                      <select
+                        value={formData.degree}
+                        onChange={(e) => update('degree', e.target.value)}
+                        className="w-full h-12 px-4 rounded-xl bg-surface-2 border border-border-2 text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                      >
+                        {DEGREE_OPTIONS.map((d) => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <Input
+                      id="section"
+                      label="Section"
+                      type="text"
+                      placeholder="e.g. A"
+                      value={formData.section}
+                      onChange={(e) => update('section', e.target.value)}
+                    />
+                  </div>
+                  <Input
+                    id="batch_year"
+                    label="Batch Year"
+                    type="number"
+                    placeholder="e.g. 2023"
+                    value={formData.batch_year}
+                    onChange={(e) => update('batch_year', e.target.value)}
+                  />
+                  <p className="text-xs text-text-muted">You can edit all of these later in Settings.</p>
+                </div>
+              )}
+
+              {step === 4 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
                     <Target size={16} className="text-primary" />
                     <span className="text-sm font-semibold text-text">Set your attendance goal</span>
                   </div>
@@ -223,7 +286,7 @@ export default function OnboardingWizard() {
                 </div>
               )}
 
-              {step === 4 && (
+              {step === 5 && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Upload size={16} className="text-primary" />
